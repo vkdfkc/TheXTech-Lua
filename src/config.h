@@ -824,6 +824,10 @@ public:
         "luna-script-enable-engine", "Enable engine", nullptr};
     opt<bool> luna_allow_level_codes{this, defaults(true), {CompatClass::critical_update, false}, Scope::CreatorFile,
         "luna-script-allow-level-codes", "Allow level codes", nullptr};
+
+    // Lua
+    opt<bool> lua_enable_engine{this, defaults(true), {CompatClass::critical_update, false}, Scope::CreatorFile,
+        "lua-script-enable-engine", "Enable Lua engine", nullptr};
     static constexpr bool autocode_translate_coords = true;
     // opt<bool> autocode_translate_coords{this, defaults(true), {}, Scope::CreatorFile,
     //     "autocode-translate-coords", "Translate coords", "Translate the coordinates of autocode screen-space objects based on the HUD location"};

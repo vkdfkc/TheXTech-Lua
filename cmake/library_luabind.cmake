@@ -6,8 +6,13 @@ add_library(PGE_LuaBind INTERFACE)
 if(PGE_USE_LUAJIT)
     set(LUAJIT_USE_CMAKE_FLAG -DUSE_LUAJIT=ON)
     message("***** LuaJIT Lua in use! *****")
+    set(LUA_FOUND_FLAGS
+        -DLUA_INCLUDE_DIR=${DEPENDENCIES_INSTALL_DIR}/include/luajit
+        -DLUA_LIBRARIES=${DEPENDENCIES_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}luajit${CMAKE_STATIC_LIBRARY_SUFFIX}
+    )
 else()
     set(LUAJIT_USE_CMAKE_FLAG -DUSE_LUAJIT=OFF)
+    set(LUA_FOUND_FLAGS)
     message("***** PUC-Rio Lua in use! *****")
 endif()
 
@@ -32,6 +37,7 @@ ExternalProject_Add(
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
         ${ANDROID_CMAKE_FLAGS}
         ${LUAJIT_USE_CMAKE_FLAG}
+        ${LUA_FOUND_FLAGS}
         $<$<BOOL:APPLE>:-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}>
     BUILD_BYPRODUCTS
         "${libLuaBind_Lib}"

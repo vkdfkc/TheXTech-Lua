@@ -958,6 +958,9 @@ int GameMain(const CmdLineSetup_t &setup)
             }
 
             lunaLoad();
+#ifdef ENABLE_XTECH_LUA
+            xtech_lua_load();
+#endif
 
             clearScreenFaders();
 
@@ -1037,6 +1040,9 @@ int GameMain(const CmdLineSetup_t &setup)
             curWorldLevel = 0;
 
             lunaReset();
+#ifdef ENABLE_XTECH_LUA
+            xtech_lua_reset();
+#endif
             ResetSoundFX();
             ClearWorld();
 
@@ -1166,6 +1172,9 @@ int GameMain(const CmdLineSetup_t &setup)
             speedRun_resetTotal();
 
             lunaLoad();
+#ifdef ENABLE_XTECH_LUA
+            xtech_lua_load();
+#endif
 
             delayedMusicStart(); // Allow music being started
 
@@ -1269,6 +1278,9 @@ int GameMain(const CmdLineSetup_t &setup)
                 }
 
                 lunaReset();
+#ifdef ENABLE_XTECH_LUA
+                xtech_lua_reset();
+#endif
                 ResetSoundFX();
                 ClearLevel();
 
@@ -1559,6 +1571,9 @@ int GameMain(const CmdLineSetup_t &setup)
                     g_levelScreenFader.setupFader(2, 65, 0, ScreenFader::S_FADE);
 
                 lunaLoad();
+#ifdef ENABLE_XTECH_LUA
+                xtech_lua_load();
+#endif
 
                 delayedMusicStart(); // Allow music being started
 
@@ -1693,6 +1708,9 @@ int GameMain(const CmdLineSetup_t &setup)
             else if(!LevelRestartRequested)
             {
                 lunaReset();
+#ifdef ENABLE_XTECH_LUA
+                xtech_lua_reset();
+#endif
                 ResetSoundFX();
                 ClearLevel();
 //            End If
@@ -1748,6 +1766,9 @@ void KillIt()
     XRender::repaint();
 #endif
     lunaReset();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_reset();
+#endif
     QuitMixerX();
     UnloadGFX();
     XWindow::showCursor(1);
@@ -1813,6 +1834,9 @@ void NextLevel()
     LevelMacroWhich = 0;
     StopMusic();
     lunaReset();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_reset();
+#endif
     ResetSoundFX();
     ClearLevel();
 
@@ -2655,6 +2679,9 @@ void StartBattleMode()
         PGE_Delay(500);
 
     lunaReset();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_reset();
+#endif
     ResetSoundFX();
     ClearLevel();
 

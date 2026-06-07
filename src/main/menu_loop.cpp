@@ -47,6 +47,10 @@
 #include "main/trees.h"
 #include "script/luna/luna.h"
 
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_main.h"
+#endif
+
 #include "npc/npc_queues.h"
 
 
@@ -513,6 +517,9 @@ static void updateIntroLevelActivity()
 void MenuLoop()
 {
     lunaLoop();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_loop();
+#endif
 
     // ConnectScreen and ControlsSettings screens handles its own input method polling
     if(MenuMode != MENU_CHARACTER_SELECT_NEW && MenuMode != MENU_INPUT_SETTINGS && !g_pollingInput)

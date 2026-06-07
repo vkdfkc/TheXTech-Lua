@@ -36,6 +36,7 @@ if(PGE_USE_LUAJIT)
         "${libLuaJit_Lib}"
     )
 
+    target_include_directories(PGE_LuaJIT INTERFACE "${DEPENDENCIES_INSTALL_DIR}/include/luajit")
     target_link_libraries(PGE_LuaJIT INTERFACE ${libLuaJit_Lib})
 
 elseif(PGE_USE_LUAJIT_LEGACY_BUILD)
@@ -123,6 +124,7 @@ elseif(PGE_USE_LUAJIT_LEGACY_BUILD)
         )
     endif() #NOT WIN32
 
+    target_include_directories(PGE_LuaJIT INTERFACE "${DEPENDENCIES_INSTALL_DIR}/include/luajit-2.1")
     target_link_libraries(PGE_LuaJIT INTERFACE ${libLuaJit_Lib})
 
 endif()

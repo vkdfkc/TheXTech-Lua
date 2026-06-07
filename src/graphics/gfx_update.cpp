@@ -52,6 +52,10 @@
 #include "../core/render.h"
 #include "../script/luna/luna.h"
 
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_main.h"
+#endif
+
 #include "npc/npc_activation.h"
 #include "npc/npc_queues.h"
 #include "npc/section_overlap.h"
@@ -2100,6 +2104,9 @@ void UpdateGraphicsDraw(bool skipRepaint)
     frameNextInc();
     frameRenderStart();
     lunaRenderStart();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_renderStart();
+#endif
 
     if(ClearBuffer)
     {
@@ -2123,6 +2130,9 @@ void UpdateGraphicsDraw(bool skipRepaint)
         XRender::repaint();
 
     lunaRenderEnd();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_renderEnd();
+#endif
     frameRenderEnd();
 
 //    if(XRender::lazyLoadedBytes() > 200000) // Reset timer while loading many pictures at the same time
@@ -2876,6 +2886,9 @@ void UpdateGraphicsScreen(Screen_t& screen)
             // Redigit NetPlay player names were also dropped
 
             lunaRender(Z);
+#ifdef ENABLE_XTECH_LUA
+            xtech_lua_render(Z);
+#endif
 
             // debug code to show logical screens
             if(g_CheatLogicScreen && !screen.is_canonical())
@@ -3009,6 +3022,9 @@ void UpdateGraphicsScreen(Screen_t& screen)
             {
 #ifdef THEXTECH_ENABLE_LUNA_AUTOCODE
                 lunaRenderHud(Z);
+#endif
+#ifdef ENABLE_XTECH_LUA
+                xtech_lua_renderHud(Z);
 #endif
 
                 // this is LunaScript's way of disabling the original SMBX HUD, so it shouldn't affect the Luna HUD

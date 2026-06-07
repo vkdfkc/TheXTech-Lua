@@ -35,6 +35,10 @@
 #include "../sound.h"
 #include "../main/trees.h"
 #include "../script/luna/luna.h"
+
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_main.h"
+#endif
 #include "layers.h"
 #include "game_info.h"
 #include "outro_loop.h"
@@ -146,6 +150,9 @@ void DoCredits(bool quit)
 void OutroLoop()
 {
     lunaLoop();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_loop();
+#endif
     Controls::Update(false);
     Integrator::sync();
     bool quit = l_SharedControls.QuitCredits;

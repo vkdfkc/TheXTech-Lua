@@ -21,6 +21,7 @@ pge_cxx_standard(11)
 
 set(LIB_XTECHLUA_SRCS
     src/xtech_lua_main.cpp
+    src/xtech_lua_bindings.cpp
 )
 
 add_library(XTechLua STATIC
@@ -31,8 +32,16 @@ target_include_directories(XTechLua PRIVATE
     include src lib
     ${TheXTech_SOURCE_DIR}/src
     ${TheXTech_SOURCE_DIR}/lib
+    ${TheXTech_SOURCE_DIR}/3rdparty
     "${DEPENDENCIES_INSTALL_DIR}/include"
+    "${DEPENDENCIES_INSTALL_DIR}/include/luajit"
     ${A2XT_INCS}
 )
 
+target_link_libraries(XTechLua PUBLIC PGE_LuaJIT PGE_LuaBind)
 add_dependencies(XTechLua LuaBind_Local ${A2XT_DEPS})
+
+# GCC 12 + RangeArr returns const refs from extern arrays
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")
+    target_compile_options(XTechLua PRIVATE -fpermissive)
+endif()

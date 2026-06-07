@@ -67,6 +67,11 @@
 #include "main/level_medals.h"
 #include "main/game_loop_interrupt.h"
 #include "script/luna/luna.h"
+
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_main.h"
+#endif
+
 #include "game_strings.h"
 
 #include "../pseudo_vb.h"
@@ -228,6 +233,9 @@ resume_IntroEvents:
 
     g_microStats.start_task(MicroStats::Script);
     lunaLoop();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_loop();
+#endif
 
     g_microStats.start_task(MicroStats::Controls);
 
