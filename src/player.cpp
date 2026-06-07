@@ -27,6 +27,9 @@
 
 #include "globals.h"
 #include "player.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_events.h"
+#endif
 #include "player/player_effect.h"
 #include "player/player_update_priv.h"
 #include "graphics.h"
@@ -1154,6 +1157,9 @@ void PlayerHurt(const int A)
             }
         }
     }
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_playerHurt(A, 0);
+#endif
 }
 
 void PlayerDeathEffect(int A)
@@ -1258,6 +1264,9 @@ void PlayerDead(int A)
 
     if(A == SingleCoop)
         SwapCoop();
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_playerDeath(A, 0);
+#endif
 }
 
 void KillPlayer(const int A)
@@ -1773,6 +1782,9 @@ static void s_makeDust(Player_t& p, int dir_offset, Location_t& tempLocation)
 
         p.SlideCounter = 2 + iRand_round(add_slide);
     }
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_gameOver();
+#endif
 }
 
 void PlayerFrame(const int A)
@@ -3737,6 +3749,9 @@ void PlayerDismount(const int A)
                 Player[A].Jump = Player[A].Jump - 6;
         }
     }
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_playerDismount(A, 0);
+#endif
 }
 
 void SwapCoop()
@@ -5029,6 +5044,9 @@ void PlayerGrabCode(const int A, bool DontResetGrabTime)
 
                     p.HoldingNPC = p.StandingOnNPC;
                     p.Location.SpeedY = NPC[p.StandingOnNPC].Location.SpeedY;
+#ifdef ENABLE_XTECH_LUA
+                    xtech_lua_event_npcGrab(p.StandingOnNPC, (int)NPC[p.StandingOnNPC].Type, A, true);
+#endif
                     if(p.Location.SpeedY == 0)
                         p.Location.SpeedY = 0.01_n;
                     p.CanJump = false;

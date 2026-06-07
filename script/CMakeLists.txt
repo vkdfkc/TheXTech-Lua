@@ -22,6 +22,7 @@ pge_cxx_standard(11)
 set(LIB_XTECHLUA_SRCS
     src/xtech_lua_main.cpp
     src/xtech_lua_bindings.cpp
+    src/xtech_lua_events.cpp
 )
 
 add_library(XTechLua STATIC
@@ -44,4 +45,9 @@ add_dependencies(XTechLua LuaBind_Local ${A2XT_DEPS})
 # GCC 12 + RangeArr returns const refs from extern arrays
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")
     target_compile_options(XTechLua PRIVATE -fpermissive)
+endif()
+
+# Inherit THEXTECH_FIXED_POINT from the main build (num_t layout must match)
+if(THEXTECH_FIXED_POINT)
+    target_compile_definitions(XTechLua PRIVATE -DTHEXTECH_FIXED_POINT)
 endif()

@@ -27,6 +27,9 @@
 
 #include "../globals.h"
 #include "../npc.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "player.h"
 #include "../sound.h"
 #include "../graphics.h"
@@ -861,6 +864,9 @@ interrupt_Activation:
 
         // Normal operations start here
 
+#ifdef ENABLE_XTECH_LUA
+        xtech_lua_event_npcUpdate(A, (int)NPC[A].Type);
+#endif
 
         if(NPC[A]->IsACoin && NPC[A].Special == 0 && NPC[A].HoldingPlayer == 0 && !NPC[A].Inert && !NPC[A].Wings && NPC[A].Effect == NPCEFF_NORMAL && g_config.optimize_coins)
         {

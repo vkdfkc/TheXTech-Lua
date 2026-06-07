@@ -72,6 +72,10 @@ extern "C"
 
 #include "xtech_lua_bindings.h"
 #include "xtech_lua_main.h"
+#include "xtech_lua_events.h"
+
+// Forward declaration of event subscribe function (defined in xtech_lua_events.cpp)
+extern "C" int xtech_lua_subscribe_event(lua_State *L);
 
 
 // ============================================================================
@@ -165,6 +169,15 @@ static int npc_getPermID(NPC_t *n)
     if(idx >= 0 && idx < numNPCs)
         return (int)(idx + 1); // 1-based
     return -1;
+}
+
+// Name getter/setter using string bank
+static std::string npc_getName(NPC_t *n) {
+    if(!n || n->Name == STRINGINDEX_NONE) return "";
+    return GetS(n->Name);
+}
+static void npc_setName(NPC_t *n, const std::string &v) {
+    if(n) SetS(n->Name, v);
 }
 
 } // namespace LuaNPCExt
@@ -416,6 +429,14 @@ static NPC_t* lua_npc_create(int type, num_t x, num_t y, num_t xspd, num_t yspd)
     return const_cast<NPC_t*>(&NPC[numNPCs]);
 }
 
+// getByName
+static NPC_t* npc_getByName(const std::string &name) {
+    for(int i = 1; i <= numNPCs; i++)
+        if(NPC[i].Name != STRINGINDEX_NONE && GetS(NPC[i].Name) == name)
+            return const_cast<NPC_t*>(&NPC[i]);
+    return nullptr;
+}
+
 } // namespace LuaNPC
 
 
@@ -500,9 +521,10 @@ static bool isPlayerTouchingType(int blockType, int collision, Player_t *player)
 static Block_t* getByPermID(int permId)
 {
     if(permId >= 1 && permId <= numBlock)
-        return const_cast<Block_t*>(&Block[permId]);
+        return BlocksF::Get(permId);
     return nullptr;
 }
+static Block_t* getByPermID_wrapper(int permId) { return getByPermID(permId); }
 
 static void forEach(int type, luabind::object callback)
 {
@@ -538,6 +560,23 @@ static int block_getPermID(Block_t *b)
     if(idx >= 0 && idx < numBlock)
         return (int)(idx + 1); // 1-based
     return -1;
+}
+
+// Name getter/setter using string bank
+static std::string block_getName(Block_t *b) {
+    if(!b || b->Name == STRINGINDEX_NONE) return "";
+    return GetS(b->Name);
+}
+static void block_setName(Block_t *b, const std::string &v) {
+    if(b) SetS(b->Name, v);
+}
+
+// getByName
+static Block_t* block_getByName(const std::string &name) {
+    for(int i = 1; i <= numBlock; i++)
+        if(Block[i].Name != STRINGINDEX_NONE && GetS(Block[i].Name) == name)
+            return const_cast<Block_t*>(&Block[i]);
+    return nullptr;
 }
 
 } // namespace LuaBlock
@@ -795,6 +834,23 @@ static int water_getPermID(Water_t *w)
     if(idx >= 0 && idx < numWater)
         return (int)(idx + 0); // 0-based
     return -1;
+}
+
+// Name getter/setter using string bank
+static std::string water_getName(Water_t *w) {
+    if(!w || w->Name == STRINGINDEX_NONE) return "";
+    return GetS(w->Name);
+}
+static void water_setName(Water_t *w, const std::string &v) {
+    if(w) SetS(w->Name, v);
+}
+
+// getByName
+static Water_t* water_getByName(const std::string &name) {
+    for(int i = 0; i <= numWater; i++)
+        if(Water[i].Name != STRINGINDEX_NONE && GetS(Water[i].Name) == name)
+            return const_cast<Water_t*>(&Water[i]);
+    return nullptr;
 }
 
 } // namespace LuaWater
@@ -1350,7 +1406,9 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("Width", &Location_t::Width)
             .def_readwrite("Height", &Location_t::Height)
             .def_readwrite("SpeedX", &Location_t::SpeedX)
-            .def_readwrite("SpeedY", &Location_t::SpeedY),
+            .def_readwrite("SpeedY", &Location_t::SpeedY)
+            .def("luaX", &Location_t::luaX)
+            .def("luaY", &Location_t::luaY),
 
         // ================================================================
         // LunaRect struct binding (for sprite rendering rects)
@@ -1532,7 +1590,11 @@ void xtech_lua_register_bindings(lua_State *L)
             .def("setGeneratorTimeMax", &LuaNPCExt::npc_setGeneratorTimeMax)
             .def("getGeneratorTime", &LuaNPCExt::npc_getGeneratorTime)
             .def("setGeneratorTime", &LuaNPCExt::npc_setGeneratorTime)
-            .def("getPermID", &LuaNPCExt::npc_getPermID),
+            .def("getPermID", &LuaNPCExt::npc_getPermID)
+            .def("getName", &LuaNPCExt::npc_getName)
+            .def("setName", &LuaNPCExt::npc_setName)
+            .def("luaX", +[](NPC_t *n) -> lua_Integer { return (lua_Integer)(n->Location.X.i >> 32); })
+            .def("luaY", +[](NPC_t *n) -> lua_Integer { return (lua_Integer)(n->Location.Y.i >> 32); }),
 
         // ================================================================
         // Player_t class binding (read/write access to all fields)
@@ -1666,7 +1728,9 @@ void xtech_lua_register_bindings(lua_State *L)
             .def("getSlippyWall", &LuaPlayerExt::player_getSlippyWall)
             .def("setSlippyWall", &LuaPlayerExt::player_setSlippyWall)
             .def("getJumpOffWall", &LuaPlayerExt::player_getJumpOffWall)
-            .def("setJumpOffWall", &LuaPlayerExt::player_setJumpOffWall),
+            .def("setJumpOffWall", &LuaPlayerExt::player_setJumpOffWall)
+            .def("luaX", +[](Player_t *p) -> lua_Integer { return (lua_Integer)(p->Location.X.i >> 32); })
+            .def("luaY", +[](Player_t *p) -> lua_Integer { return (lua_Integer)(p->Location.Y.i >> 32); }),
 
         // ================================================================
         // Layer_t class binding
@@ -1706,7 +1770,11 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("tempBlockNpcType", &Block_t::tempBlockNpcType)
             .def_readwrite("tempBlockVehicleYOffset", &Block_t::tempBlockVehicleYOffset)
             .def_readwrite("tempBlockNpcIdx", &Block_t::tempBlockNpcIdx)
-            .def("getPermID", &LuaBlock::block_getPermID),
+            .def("getPermID", &LuaBlock::block_getPermID)
+            .def("getName", &LuaBlock::block_getName)
+            .def("setName", &LuaBlock::block_setName)
+            .def("luaX", +[](Block_t *b) -> lua_Integer { return (lua_Integer)(b->Location.X.i >> 32); })
+            .def("luaY", +[](Block_t *b) -> lua_Integer { return (lua_Integer)(b->Location.Y.i >> 32); }),
 
         // ================================================================
         // SpeedlessLocation_t struct binding
@@ -1717,7 +1785,9 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("X", &SpeedlessLocation_t::X)
             .def_readwrite("Y", &SpeedlessLocation_t::Y)
             .def_readwrite("Width", &SpeedlessLocation_t::Width)
-            .def_readwrite("Height", &SpeedlessLocation_t::Height),
+            .def_readwrite("Height", &SpeedlessLocation_t::Height)
+            .def("luaX", &SpeedlessLocation_t::luaX)
+            .def("luaY", &SpeedlessLocation_t::luaY),
 
         // ================================================================
         // Background_t (BGO) class binding
@@ -1738,7 +1808,9 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("Type", &Water_t::Type)
             .def_readwrite("Hidden", &Water_t::Hidden)
             .def_readwrite("Layer", &Water_t::Layer)
-            .def("getPermID", &LuaWater::water_getPermID),
+            .def("getPermID", &LuaWater::water_getPermID)
+            .def("getName", &LuaWater::water_getName)
+            .def("setName", &LuaWater::water_setName),
 
         // ================================================================
         // Warp_t class binding
@@ -1821,6 +1893,7 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_npc_kill", &LuaNPC::kill),
         def("xtech_npc_hurt", &LuaNPC::hurt),
         def("xtech_npc_getByPermID", &LuaNPC::getByPermID),
+        def("xtech_npc_getByName", &LuaNPC::npc_getByName),
         def("xtech_npc_forEach", &LuaNPC::forEach),
         def("xtech_npc_create", &LuaNPC::lua_npc_create),
 
@@ -1843,7 +1916,8 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_block_showAll", &LuaBlock::showAll),
         def("xtech_block_hideAll", &LuaBlock::hideAll),
         def("xtech_block_isPlayerTouchingType", &LuaBlock::isPlayerTouchingType),
-        def("xtech_block_getByPermID", &LuaBlock::getByPermID),
+        def("xtech_block_getByPermID", &LuaBlock::getByPermID_wrapper),
+        def("xtech_block_getByName", &LuaBlock::block_getByName),
         def("xtech_block_forEach", &LuaBlock::forEach),
 
         // ================================================================
@@ -1860,6 +1934,7 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_liquid_get", &LuaWater::get),
         def("xtech_liquid_count", &LuaWater::count),
         def("xtech_liquid_getByPermID", &LuaWater::getByPermID),
+        def("xtech_liquid_getByName", &LuaWater::water_getByName),
 
         // ================================================================
         // Warp API functions
@@ -1988,6 +2063,10 @@ void xtech_lua_register_bindings(lua_State *L)
 
     lua_pushcfunction(L, LuaMisc::lua_timer_createEvent_raw);
     lua_setglobal(L, "xtech_timer_createEvent");
+
+    // P4: Event subscription
+    lua_pushcfunction(L, xtech_lua_subscribe_event);
+    lua_setglobal(L, "xtech_event_subscribe");
 
     // ================================================================
     // Manual constant registrations: luabind's def() with integer

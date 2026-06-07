@@ -3168,8 +3168,8 @@ void UpdateGraphicsMeta()
     if(LevelEditor || MagicHand)
         DrawEditorLevel_UI();
 
-    // render special screens
-    if(GamePaused == PauseCode::PauseScreen)
+    // render special screens (skip if already transitioning to menu)
+    if(GamePaused == PauseCode::PauseScreen && !GameMenu)
         PauseScreen::Render();
 
     if(GamePaused == PauseCode::Message)

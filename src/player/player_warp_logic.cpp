@@ -23,6 +23,9 @@
 #include "sdl_proxy/sdl_stdinc.h"
 
 #include "globals.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 
 #include "player.h"
 #include "graphics.h"

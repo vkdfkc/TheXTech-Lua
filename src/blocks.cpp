@@ -24,6 +24,9 @@
 #include "sdl_proxy/sdl_stdinc.h"
 
 #include "globals.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "frame_timer.h"
 #include "blocks.h"
 #include "sound.h"
@@ -799,6 +802,9 @@ void BlockHit(int A, bool HitDown, int whatPlayer)
 
     if(b.Type == 90)
         BlockHitHard(A);
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_blockHit(A, (int)Block[A].Type, whatPlayer, (int)HitDown);
+#endif
 }
 
 enum BlockShakeProgram : uint8_t
@@ -903,6 +909,9 @@ void BlockHitHard(int A)
             iBlock[iBlocks] = A;
         }
     }
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_blockDestroy(A, (int)Block[A].Type, 0);
+#endif
 }
 
 void SafelyKillBlock(int A)

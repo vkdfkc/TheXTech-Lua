@@ -378,6 +378,8 @@ struct NPC_t
     layerindex_t AttLayer = LAYER_NONE;
 //    Text As String 'the text that is displayed when you talk to the NPC
     stringindex_t Text = STRINGINDEX_NONE;
+//    Name As String 'object name for scripting (P4)
+    stringindex_t Name = STRINGINDEX_NONE;
 
 //    Projectile As Boolean 'If the NPC is a projectile
     bool Projectile = false;
@@ -897,6 +899,8 @@ struct Water_t
     layerindex_t Layer = LAYER_NONE;
 //    Hidden As Boolean
     bool Hidden = false;
+//    Name As String 'object name for scripting (P4)
+    stringindex_t Name = STRINGINDEX_NONE;
 //End Type
 };
 
@@ -927,6 +931,8 @@ struct Block_t
     eventindex_t TriggerLast = EVENT_NONE;
 //    Layer As String
     layerindex_t Layer = LAYER_NONE;
+//    Name As String 'object name for scripting (P4)
+    stringindex_t Name = STRINGINDEX_NONE;
 //    NPC As Integer 'when a coin is turned into a block after the p switch is hit
     NPCID coinSwitchNpcType = NPCID(0);
 //    Type As Integer 'the block's type

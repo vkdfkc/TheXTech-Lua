@@ -859,6 +859,10 @@ bool OpenLevel_Block(void* userdata, LevelBlock& b)
             pLogWarning("Block-%d ID is out of range (max types %d), reset to Block-1", block.Type, maxBlockType);
             block.Type = 1;
         }
+
+        // Copy object name from level file to runtime (P4)
+        if(!b.name.empty())
+            SetS(block.Name, b.name);
     }
 
     return true;
@@ -1023,6 +1027,10 @@ bool OpenLevel_NPC(void* userdata, LevelNPC& n)
 
         if(!n.msg.empty())
             SetS(npc.Text, n.msg);
+
+        // Copy object name from level file to runtime (P4)
+        if(!n.name.empty())
+            SetS(npc.Name, n.name);
 
         npc.Inert = n.friendly;
         if(npc.Type == NPCID_SIGN)

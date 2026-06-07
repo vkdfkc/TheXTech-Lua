@@ -48,6 +48,7 @@
 
 #ifdef ENABLE_XTECH_LUA
 #include "xtech_lua_main.h"
+#include "xtech_lua_events.h"
 #endif
 
 #ifdef THEXTECH_ENABLE_SDL_NET

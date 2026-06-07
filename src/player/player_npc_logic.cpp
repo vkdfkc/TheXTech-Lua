@@ -19,6 +19,9 @@
  */
 
 #include "globals.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 
 #include "player.h"
 #include "npc.h"
@@ -541,6 +544,9 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                         NPC[B].HoldingPlayer = A;
                                         NPC[B].CantHurt = Physics.NPCCanHurtWait;
                                         NPC[B].CantHurtPlayer = A;
+#ifdef ENABLE_XTECH_LUA
+                                        xtech_lua_event_npcGrab(B, (int)NPC[B].Type, A, false);
+#endif
                                     }
 
                                 }
@@ -677,6 +683,9 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                         NPC[B].HoldingPlayer = A;
                                         NPC[B].CantHurt = Physics.NPCCanHurtWait;
                                         NPC[B].CantHurtPlayer = A;
+#ifdef ENABLE_XTECH_LUA
+                                        xtech_lua_event_npcGrab(B, (int)NPC[B].Type, A, false);
+#endif
                                     }
                                     else if(NPC[B].HoldingPlayer == 0) // Kick the shell
                                     {

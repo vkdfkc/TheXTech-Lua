@@ -33,6 +33,10 @@ struct Location_t
     num_t X = 0.0_n;
 //    Y As Double
     num_t Y = 0.0_n;
+
+    // Lua-friendly accessors (Luabind can't handle num_t conversions)
+    inline double luaX() const { return (double)(X.i >> 32); }
+    inline double luaY() const { return (double)(Y.i >> 32); }
 //    Height As Double
     num_t Height = 0.0_n;
 //    Width As Double
@@ -137,6 +141,9 @@ struct SpeedlessLocation_t
     num_t X = 0_n;
 //    Y As Double
     num_t Y = 0_n;
+//  Lua-friendly accessors
+    inline double luaX() const { return (double)(X.i >> 32); }
+    inline double luaY() const { return (double)(Y.i >> 32); }
 //    Height As Double
     num_t Height = 0_n;
 //    Width As Double

@@ -1848,10 +1848,10 @@ InputMethod* InputMethodType_Joystick::Poll(const std::vector<InputMethod*>& act
         else
             s_bindJoystickKey(joy, k);
 
-        // can_poll is set as false on joystick initialization and unbinding
-        if(k.type == KM_Key::NoControl)
+        // can_poll stays false until an actual button/axis press is detected
+        if(k.type != KM_Key::NoControl)
             p.second->can_poll = true;
-        else if(p.second->can_poll)
+        if(p.second->can_poll && k.type != KM_Key::NoControl)
         {
             active_joystick = p.second;
             break;

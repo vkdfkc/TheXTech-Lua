@@ -183,6 +183,7 @@ void SaveLevel(const std::string& FilePath, int format, int version)   // saves 
         block.event_destroy = GetE(b.TriggerDeath);
         block.event_hit = GetE(b.TriggerHit);
         block.event_emptylayer = GetE(b.TriggerLast);
+        block.name = GetS(b.Name);
 
         // NEW: legacy behavior for spin block
         if(b.Type == 90)
@@ -274,6 +275,7 @@ void SaveLevel(const std::string& FilePath, int format, int version)   // saves 
         npc.attach_layer = GetL(n.AttLayer);
 
         npc.msg = GetS(n.Text);
+        npc.name = GetS(n.Name);
         npc.friendly = n.Inert;
         npc.nomove = n.Stuck;
         npc.is_boss = n.Legacy;

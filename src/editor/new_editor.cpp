@@ -105,7 +105,7 @@ constexpr auto LESet_Nothing = EventSection_t::LESet_Nothing;
 constexpr auto LESet_ResetDefault = EventSection_t::LESet_ResetDefault;
 
 constexpr int e_ScreenW = 640;
-constexpr int e_ScreenH = 480;
+constexpr int e_ScreenH = /*480*/520;
 
 static const std::vector<std::string> c_musicFormats =
 {
@@ -800,6 +800,23 @@ void EditorScreen::UpdateNPCScreen(CallMode mode)
                 std::string&& prompt = fmt::format_ne(g_editorStrings.phraseTextOf, g_editorStrings.wordNPCGenitive);
                 SetS(EditorCursor.NPC.Text, TextEntryScreen::Run(prompt, GetS(EditorCursor.NPC.Text)));
 
+                s_fix_mouse_pos();
+            }
+        }
+
+        // NPC Name (below text, before wings)
+        {
+            const std::string& name = GetS(EditorCursor.NPC.Name);
+            SuperPrintRightR(mode, "Name:", 3, e_ScreenW - 130 + 15, 274 + 190);
+            if(!name.empty())
+                SuperPrintRightR(mode, name, 3, e_ScreenW - 40, 294 + 190);
+            else
+                SuperPrintRightR(mode, g_mainMenu.caseNone, 3, e_ScreenW - 40, 294 + 190);
+
+            if(UpdateButton(mode, e_ScreenW - 40 + 4, 274 + 4 + 198, GFX.EIcons, 0, 0, 32*Icon::pencil, 32, 32))
+            {
+                DisableCursorNew();
+                SetS(EditorCursor.NPC.Name, TextEntryScreen::Run("Enter NPC name:", name));
                 s_fix_mouse_pos();
             }
         }
@@ -3374,6 +3391,23 @@ void EditorScreen::UpdateBlockScreen(CallMode mode)
     else
     {
         EditorCursor.Block.forceSmashable = 0;
+    }
+
+    // Block Name
+    {
+        const std::string& name = GetS(EditorCursor.Block.Name);
+        SuperPrintRightR(mode, "Name:", 3, e_ScreenW - 75, 154);
+        if(!name.empty())
+            SuperPrintRightR(mode, name, 3, e_ScreenW - 40, 174);
+        else
+            SuperPrintRightR(mode, g_mainMenu.caseNone, 3, e_ScreenW - 40, 174);
+
+        if(UpdateButton(mode, e_ScreenW - 36, 164, GFX.EIcons, 0, 0, 32*Icon::pencil, 32, 32))
+        {
+            DisableCursorNew();
+            SetS(EditorCursor.Block.Name, TextEntryScreen::Run("Enter block name:", name));
+            s_fix_mouse_pos();
+        }
     }
 
     // Slippy ("SLICK") and Invis

@@ -22,6 +22,9 @@
 
 #include "sdl_proxy/sdl_stdinc.h"
 #include "globals.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "layers.h"
 #include "saved_layers.h"
 #include "effect.h"
@@ -535,6 +538,9 @@ void ShowLayer(layerindex_t L, bool NoEffect)
                 NPC[A].TimeLeft = 1;
 
                 NPCQueues::Active.insert(A);
+#ifdef ENABLE_XTECH_LUA
+                xtech_lua_event_npcActivate(A, (int)NPC[A].Type);
+#endif
             }
         }
 

@@ -21,6 +21,9 @@
 #include <Logger/logger.h>
 
 #include "../globals.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "../config.h"
 #include "../player.h"
 #include "player/player_effect.h"
@@ -549,6 +552,9 @@ resume_MessageNPC:
 
                     if(NPC[MessageNPC].TriggerTalk != EVENT_NONE)
                     {
+#ifdef ENABLE_XTECH_LUA
+                        xtech_lua_event_npcTalk(MessageNPC, (int)NPC[MessageNPC].Type, A);
+#endif
                         eventindex_t resume_index;
                         resume_index = ProcEvent_Safe(false, NPC[MessageNPC].TriggerTalk, A);
                         while(resume_index != EVENT_NONE)

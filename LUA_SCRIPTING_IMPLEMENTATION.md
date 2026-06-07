@@ -179,6 +179,15 @@ getGeneratorTime/setGeneratorTime
 getPermID()          -- 返回此 NPC 在全局数组中的 1-based 索引（永久 ID）
 ```
 
+**对象命名方法（P4 新增）:**
+```
+getName()            -- 返回此 NPC 的名称（字符串，空字符串表示未命名）
+setName("name")      -- 设置此 NPC 的名称（写入字符串库）
+```
+
+> 名称存储在引擎的字符串库中，支持通过 `xtech_npc_getByName("name")` 精确查找。
+> 也可以在 `.lvlx` 关卡文件中通过 `NA:"name"` 字段直接预设名称（见第 8 节）。
+
 ### 3.6 Player_t（玩家角色）— 完整字段绑定 ✅ 已扩展
 
 **原有字段:**
@@ -261,6 +270,8 @@ tempBlockNpcType            -- 临时方块的 NPC 类型
 tempBlockVehicleYOffset     -- Y 偏移
 tempBlockNpcIdx             -- 临时方块 NPC 索引
 ```
+
+**名称方法（P4 新增）:** `getName()`, `setName("name")` — 同 NPC。
 
 ### 3.9 Background_t（BGO / 背景对象）✅ P1 新增
 
@@ -746,9 +757,240 @@ xtech_effect_kill(index)                      -- 删除指定特效
 
 ---
 
-## 8. 与 SMBx TeaScript 1.4.5 对比
+## 8. 系统事件钩子（P4 — 设计规范）
 
-### 8.1 已覆盖功能（~85%）
+### 8.1 概述
+
+系统事件钩子允许 Lua 脚本通过定义特定名称的全局函数来响应游戏运行时事件。脚本中定义函数即表示订阅该事件，不定义则跳过。
+
+```lua
+-- 示例：订阅 NPC 死亡事件
+function onNPCDeath(permid, npcId, killerPlayerId)
+    if npcId == CONST_NPC_MINIBOSS then
+        xtech_event_triggerByName("bossKilled")
+        xtech_misc_showMsg("Boss defeated!")
+    end
+end
+```
+
+### 8.2 事件回调函数签名规范
+
+所有事件回调返回 `nil`（无返回值）。参数类型：整数为 `int`，浮点为 `num_t`。
+
+---
+
+### NPC 事件（7 个）
+
+#### onNPCUpdate(permid, npcId)
+**触发时机：** 每个活跃 NPC 每帧更新时调用。在 NPC 运动/AI 逻辑**之前**触发。
+**参数：**
+- `permid` (int) — NPC 在全局数组中的永久索引（1-based）
+- `npcId` (int) — NPC 类型 ID（如 `CONST_NPC_FODDER_S3` = 1）
+**性能注意：** 高频调用（每帧 × NPC 数量）。建议仅在必要时定义此函数，并在内部尽早 return。
+
+#### onNPCDeath(permid, npcId, killerPlayerId)
+**触发时机：** NPC 被杀死**之后**（`KillNPC()` 返回前）。
+**参数：**
+- `permid` (int) — NPC 永久索引
+- `npcId` (int) — NPC 类型 ID
+- `killerPlayerId` (int) — 杀死此 NPC 的玩家编号（1 或 2；若为环境杀死则为 0）
+
+#### onNPCHurt(permid, npcId, hitterId, hitType)
+**触发时机：** NPC 被攻击**之后**（`NPCHit()` 处理完成时）。
+**参数：**
+- `permid` (int) — 被攻击的 NPC 永久索引
+- `npcId` (int) — NPC 类型 ID
+- `hitterId` (int) — 攻击者的玩家编号（1/2）或 NPC 永久索引；若为环境伤害则为 0
+- `hitType` (int) — 攻击方式（1=踩踏, 2=火球, 3=尾巴, 4=旋转跳 等）
+
+#### onNPCActivate(permid, npcId)
+**触发时机：** NPC 进入激活状态（`Active` 设为 `true`）。
+**参数：** `permid` (int), `npcId` (int)
+
+#### onNPCTalk(permid, npcId, playerId)
+**触发时机：** 玩家与 NPC 对话时（对话逻辑执行**之后**）。
+**参数：** `permid` (int), `npcId` (int), `playerId` (int)
+
+#### onNPCTouch(permid, npcId, playerId, side)
+**触发时机：** 玩家接触到 NPC 的碰撞箱时。
+**参数：**
+- `permid` (int), `npcId` (int), `playerId` (int)
+- `side` (int) — 接触方向：0=无接触, 1=上方, 2=下方, 3=左侧, 4=右侧
+
+#### onNPCGrab(permid, npcId, playerId, fromTop)
+**触发时机：** 玩家抓起 NPC 时。
+**参数：** `permid` (int), `npcId` (int), `playerId` (int), `fromTop` (bool)
+
+---
+
+### 玩家事件（7 个）
+
+#### onPlayerHurt(playerId, damage, cause)
+**触发时机：** 玩家受伤**之后**（`PlayerHurt()` 处理完成时）。
+**参数：**
+- `playerId` (int) — 玩家编号（1 或 2）
+- `damage` (int) — 受到的伤害值（若因精灵死亡则为 0）
+- `cause` (int) — 伤害来源 NPC 的类型 ID；0 表示环境伤害
+
+#### onPlayerDeath(playerId, cause)
+**触发时机：** 玩家死亡动画开始时（`PlayerDead()` 调用时）。
+**参数：**
+- `playerId` (int) — 玩家编号
+- `cause` (int) — 致死原因 NPC 类型 ID
+
+#### onPlayerPowerUp(playerId, oldState, newState)
+**触发时机：** 玩家形态改变**之后**（变大/变小/吃花等）。
+**参数：**
+- `playerId` (int)
+- `oldState` (int) — 旧形态（`CONST_PLAYER_SMALL=1`, `CONST_PLAYER_SUPER=2`, `CONST_PLAYER_FIRE=3` ...）
+- `newState` (int) — 新形态
+
+#### onPlayerMount(playerId, mountType)
+**触发时机：** 玩家骑上坐骑时。
+**参数：**
+- `playerId` (int)
+- `mountType` (int) — `CONST_MOUNT_YOSHI=3`, `CONST_MOUNT_BOOT=1`, `CONST_MOUNT_CLOWN_CAR=2`
+
+#### onPlayerDismount(playerId, mountType)
+**触发时机：** 玩家从坐骑下来时。
+**参数：** `playerId` (int), `mountType` (int)
+
+#### onPlayerSwitchChar(playerId, oldChar, newChar)
+**触发时机：** 玩家切换角色时（如从 Mario 切换到 Luigi）。
+**参数：**
+- `playerId` (int)
+- `oldChar` (int) — 旧角色（0=Mario, 1=Luigi, 2=Peach, 3=Toad, 4=Link）
+- `newChar` (int) — 新角色
+
+#### onPlayerRespawn(playerId)
+**触发时机：** 玩家重生（失去一条命后重新开始）。
+**参数：** `playerId` (int)
+
+---
+
+### 方块事件（2 个）
+
+#### onBlockHit(blockId, blockType, hitterId, hitStyle)
+**触发时机：** 方块被撞击**之后**。
+**参数：**
+- `blockId` (int) — 方块永久索引（1-based）
+- `blockType` (int) — 方块类型 ID
+- `hitterId` (int) — 撞击者的玩家编号（1/2）；NPC 撞击时为负值
+- `hitStyle` (int) — 撞击方式
+
+#### onBlockDestroy(blockId, blockType, destroyerId)
+**触发时机：** 方块被摧毁**之后**。
+**参数：** `blockId` (int), `blockType` (int), `destroyerId` (int)
+
+---
+
+### 关卡 / 游戏事件（6 个）
+
+#### onLevelLoad()
+**触发时机：** 关卡加载完成，所有对象初始化之后。（已存在，保留）
+**参数：** 无
+
+#### onLevelComplete()
+**触发时机：** 关卡通关（接触到终点/球/星星/磁带时 `EndLevel = true`）。
+**参数：** 无
+
+#### onLevelExit()
+**触发时机：** 关卡退出时（返回世界地图/菜单）。（`onLoopEnd()` 已存在，合并）
+**参数：** 无
+
+#### onGameOver()
+**触发时机：** 所有玩家生命用尽，Game Over 画面显示时。
+**参数：** 无
+
+#### onPause()
+**触发时机：** 游戏暂停时。
+**参数：** 无
+
+#### onUnpause()
+**触发时机：** 游戏从暂停恢复时。
+**参数：** 无
+
+---
+
+### 关卡/传送门事件（2 个）
+
+#### onWarpEnter(playerId, warpId)
+**触发时机：** 玩家进入传送门/管道时。
+**参数：** `playerId` (int), `warpId` (int) — 传送门的永久索引
+
+#### onWarpExit(playerId, warpId)
+**触发时机：** 玩家从传送门/管道出来时。
+**参数：** `playerId` (int), `warpId` (int)
+
+---
+
+### 事件汇总
+
+| 类别 | 事件 | 频率 | 实现难度 |
+|------|------|------|----------|
+| NPC | `onNPCUpdate` | 🔴 极高（每帧×NPC数） | 🟢 简单 |
+| NPC | `onNPCDeath` | 🟢 低 | 🟢 简单 |
+| NPC | `onNPCHurt` | 🟡 中 | 🟢 简单 |
+| NPC | `onNPCActivate` | 🟡 中 | 🟢 简单 |
+| NPC | `onNPCTalk` | 🟢 低 | 🟡 中等 |
+| NPC | `onNPCTouch` | 🟡 中 | 🟡 中等 |
+| NPC | `onNPCGrab` | 🟢 低 | 🟡 中等 |
+| 玩家 | `onPlayerHurt` | 🟡 中 | 🟢 简单 |
+| 玩家 | `onPlayerDeath` | 🟢 低 | 🟢 简单 |
+| 玩家 | `onPlayerPowerUp` | 🟢 低 | 🟡 中等 |
+| 玩家 | `onPlayerMount` | 🟢 低 | 🟡 中等 |
+| 玩家 | `onPlayerDismount` | 🟢 低 | 🟡 中等 |
+| 玩家 | `onPlayerSwitchChar` | 🟢 低 | 🟡 中等 |
+| 玩家 | `onPlayerRespawn` | 🟢 低 | 🟡 中等 |
+| 方块 | `onBlockHit` | 🟡 中 | 🟢 简单 |
+| 方块 | `onBlockDestroy` | 🟢 低 | 🟢 简单 |
+| 关卡 | `onLevelComplete` | 🟢 低 | 🟢 简单 |
+| 关卡 | `onLevelExit` | 🟢 低 | 🟢 简单 |
+| 关卡 | `onGameOver` | 🟢 低 | 🟡 中等 |
+| 关卡 | `onPause` / `onUnpause` | 🟢 低 | 🟡 中等 |
+| 传送 | `onWarpEnter` | 🟡 中 | 🟡 中等 |
+| 传送 | `onWarpExit` | 🟡 中 | 🟡 中等 |
+
+**总计：24 个系统事件**
+
+---
+
+### 8.3 .lvlx 关卡文件对象命名（P4）
+
+对象名称可以直接在 `.lvlx` 关卡文件中预设，无需通过 Lua 脚本设置。使用 `NA`（Name）字段：
+
+```
+BLOCK
+ID:54;X:-160032;Y:-160576;W:32;H:32;NA:"exit_door";
+BLOCK_END
+
+NPC
+ID:1;X:400;Y:300;NA:"boss_guard";
+NPC_END
+```
+
+加载关卡时，`NA` 字段的值自动写入运行时 `Name` 属性，Lua 脚本可直接查询：
+
+```lua
+function onLoad()
+    local door = xtech_block_getByName("exit_door")
+    if door then door.Hidden = false end
+end
+```
+
+**实现涉及的文件：**
+| 文件 | 改动 |
+|------|------|
+| `3rdparty/PGE_File_Formats/lvl_filedata.h` | LevelBlock + LevelNPC 加 `PGESTRING name` |
+| `3rdparty/PGE_File_Formats/src/pgex/file_rw_lvlx.cpp` | 读写 `NA` 字段 |
+| `src/main/level_file.cpp` | 加载时 `SetS(obj.Name, fileData.name)` |
+| `src/globals.h` | NPC_t / Block_t / Water_t 加 `stringindex_t Name` |
+
+---
+
+## 9. 与 SMBx TeaScript 1.4.5 对比
+
+### 9.1 已覆盖功能（~85%）
 
 | TeaScript 功能类别 | 状态 | Lua 实现方式 |
 |---|---|---|
@@ -766,7 +1008,7 @@ xtech_effect_kill(index)                      -- 删除指定特效
 | 对象永久 ID 获取 | ✅ P2 新增 | getPermID() 方法（所有对象类） |
 | 按永久 ID 精确获取 | ✅ P2 新增 | xtech_*_getByPermID() 函数 |
 | 批量遍历操作 | ✅ P2 新增 | xtech_*_forEach() 回调遍历 |
-| 对象命名 (getIDByName) | ⬜ 未实现 | 可用 getPermID + 自定义 table 替代 |
+| 对象命名 (getName/setName/getByName) | ✅ P4 新增 | NPC/Block/Liquid 名称读写 + 按名查找，支持 .lvlx `NA` 字段 |
 | 自定义变量槽 (Ivala/b/c) | ⬜ 部分 | 可用 Special2/3/4 字段代替 |
 | Layer 操作 | ✅ 已覆盖 | Layer 类绑定 + xtech_layer_* 函数 |
 | 音频 (AudioSet) | ✅ 已覆盖 | xtech_audio_* 函数 |
@@ -787,7 +1029,7 @@ xtech_effect_kill(index)                      -- 删除指定特效
 | BGP 属性 | ⬜ 未实现 | 需渲染管线重构（工作量较大） |
 | MIDI (PlayNote) | ❌ 跳过 | 过时技术，不适合现代平台 |
 
-### 8.2 设计差异说明
+### 9.2 设计差异说明
 
 | 方面 | TeaScript (VB6) | Lua 实现 |
 |---|---|---|
@@ -795,11 +1037,11 @@ xtech_effect_kill(index)                      -- 删除指定特效
 | 延迟 | Sleep 阻塞脚本 | xtech_misc_wait 异步回调 |
 | 迭代器 | ItrCreate/ItrNext 命令式 API | Lua for 循环 + 条件判断 |
 | 位图/HUD | HUDSet 多功能命令（type 切换） | 独立 API 函数 |
-| 对象命名 | getIDByName / Name 属性 | 使用数组索引访问 |
+| 对象命名 | getName / setName / getByName + .lvlx `NA` 字段 | Lua 方法 + 文件格式原生支持 |
 | 语法风格 | VB6 With/Goto/Select Case | Lua 惯用语法 |
 | 阻塞 vs 异步 | Sleep 阻塞整个脚本 | 协程式异步（更安全） |
 
-### 8.3 无法/不值得复刻的功能
+### 9.3 无法/不值得复刻的功能
 
 | 功能 | 原因 |
 |---|---|
@@ -814,7 +1056,7 @@ xtech_effect_kill(index)                      -- 删除指定特效
 
 ---
 
-## 9. 修改的文件清单
+## 10. 修改的文件清单
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
@@ -834,7 +1076,7 @@ xtech_effect_kill(index)                      -- 删除指定特效
 
 ---
 
-## 10. 未实现 / 后续扩展
+## 11. 未实现 / 后续扩展
 
 ### 已实现（P2）
 - [x] **对象永久 ID 系统** — 所有对象类的 `getPermID()` 方法
@@ -847,13 +1089,25 @@ xtech_effect_kill(index)                      -- 删除指定特效
 - [x] **命名定时器 (TCreate/TClear 等价)** — `xtech_timer_create/cancel/clearAll`
 - [x] **Effect_t 绑定 (FXCreate 等价)** — `xtech_effect_create/get/count/kill` + 152 EFFID 常量
 
+### 已实现（P4 — 16/24 事件）
+- [x] **系统事件钩子基础设施** — `xtech_lua_events.cpp/h` + `xtech_event_subscribe()` 订阅机制
+- [x] **onPlayerHurt** / **onPlayerDeath** / **onPlayerDismount** / **onPlayerRespawn**
+- [x] **onNPCDeath** / **onNPCHurt** / **onNPCUpdate** / **onNPCActivate** / **onNPCTalk** / **onNPCGrab**
+- [x] **onBlockHit** / **onBlockDestroy**
+- [x] **onLevelComplete** / **onLevelExit** / **onGameOver** / **onPause**
+
+### 计划实现（P4 剩余 — 8 个事件）
+- [ ] **onNPCTouch** — TheXTech 中无直接触发点，由事件系统驱动
+- [ ] **onPlayerPowerUp** / **onPlayerMount** / **onPlayerSwitchChar**
+- [ ] **onUnpause**
+- [ ] **onWarpEnter** / **onWarpExit**
+
 ### 中优先级
 - [ ] **lunadll.txt 兼容层** — 将旧格式自动转换为 Lua 调用
 - [ ] **Lua 脚本热加载** — 无需重启关卡重新加载脚本
 - [ ] **完整的错误报告 UI** — 在游戏内显示 Lua 错误而非仅写入日志
 
 ### 低优先级
-- [ ] **对象命名系统** — TeaScript `getIDByName` / `Name` 属性等价功能
 - [ ] **BGP（背景图片）属性** — 背景分层/偏移控制（需渲染管线重构）
 - [ ] **Luau 沙盒集成** — 将已有的 Luau 测试代码与游戏 API 集成
 - [ ] **网络/多人游戏 API** — 暴露在线模式相关功能
@@ -868,7 +1122,7 @@ xtech_effect_kill(index)                      -- 删除指定特效
 
 ---
 
-## 11. 示例用法
+## 12. 示例用法
 
 ### 基础示例：关卡入口脚本
 
@@ -1141,7 +1395,7 @@ end
 
 ---
 
-## 12. 编译说明
+## 13. 编译说明
 
 ### 使用一键构建脚本（推荐）
 

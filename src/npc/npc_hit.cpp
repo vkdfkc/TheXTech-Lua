@@ -22,6 +22,9 @@
 
 #include "../globals.h"
 #include "../npc.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "../sound.h"
 #include "../collision.h"
 #include "../effect.h"
@@ -2305,4 +2308,7 @@ void NPCHit(int A, int B, int C)
     }
 
     StopHit = 0;
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_npcHurt(A, (int)NPC[A].Type, B, C);
+#endif
 }

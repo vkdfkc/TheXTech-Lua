@@ -70,6 +70,7 @@
 
 #ifdef ENABLE_XTECH_LUA
 #   include "xtech_lua_main.h"
+#   include "xtech_lua_events.h"
 #endif
 
 #include "game_strings.h"
@@ -256,6 +257,10 @@ resume_IntroEvents:
 
     if(LevelMacro > LEVELMACRO_OFF)
     {
+#ifdef ENABLE_XTECH_LUA
+        if(LevelMacroCounter == 0)
+            xtech_lua_event_levelComplete();
+#endif
         UpdateMacro();
 
         // was previously a nested frameloop, now that logic is still done in UpdateMacro,
@@ -815,7 +820,12 @@ void PauseGame(PauseCode code, int plr)
 
     // allow waiting for the current pause frame to terminate by triggering PauseGame with PauseCode::None
     if(code != PauseCode::None)
+    {
         PauseInit(code, plr);
+#ifdef ENABLE_XTECH_LUA
+        xtech_lua_event_pause();
+#endif
+    }
 
     int cur_pause_stack_depth = s_pauseLoopState.pause_stack_depth;
 

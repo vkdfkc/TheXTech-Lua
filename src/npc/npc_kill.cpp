@@ -20,6 +20,9 @@
 
 #include "../globals.h"
 #include "../npc.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_events.h"
+#endif
 #include "../npc_id.h"
 #include "../eff_id.h"
 #include "../sound.h"
@@ -1637,5 +1640,8 @@ resume_TriggerLast:
         Deactivate(A);
     }
 
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_npcDeath(A, (int)NPC[A].Type, B > 0 ? B : 0);
+#endif
     return false;
 }
