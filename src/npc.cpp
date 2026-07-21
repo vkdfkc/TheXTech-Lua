@@ -38,6 +38,10 @@
 #include "npc_traits.h"
 #include "layers.h"
 
+#ifdef ENABLE_XTECH_LUA
+#   include "xtech_lua_events.h"
+#endif
+
 #include "npc/npc_queues.h"
 #include "npc/npc_activation.h"
 #include "npc/section_overlap.h"
@@ -2998,6 +3002,9 @@ void NPCSpecial(int A)
                                 LevelMacro = LEVELMACRO_FLAG_EXIT;
                                 LevelMacroWhich = A;
                                 LevelMacroCounter = -16; // 16 frames of waiting once player reaches ground
+#ifdef ENABLE_XTECH_LUA
+                                xtech_lua_event_levelComplete();
+#endif
                                 UnDuck(Player[i]);
                                 Player[i].SpinJump = false;
                                 // go towards the ground
