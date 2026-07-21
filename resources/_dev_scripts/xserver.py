@@ -44,6 +44,7 @@ HEADER_ACK = 14
 
 HEADER_PUT_SESSION = 15
 HEADER_GET_SESSION = 16
+HEADER_KNOCK_KNOCK = 17
 
 # an enum of header bytes for messages (*data channel*)
 MESSAGE_FRAME_BEGIN = 32 # meta-message: the following messages belong to the named frame
@@ -120,16 +121,21 @@ class Connection:
         # special case for when uploading a session object
         if self.providing_session:
             try:
-                self.room.session_config += self.conn.recv(self.room.session_config_length - len(self.room.session_config))
+                if len(self.room.session_config) < self.room.session_config_length:
+                    self.room.session_config += self.conn.recv(self.room.session_config_length - len(self.room.session_config))
+                else:
+                    self.room.sent_history += self.conn.recv(self.room.host_history_length - len(self.room.sent_history))
             except BlockingIOError:
                 pass
 
-            if len(self.room.session_config) < self.room.session_config_length:
+            if len(self.room.session_config) < self.room.session_config_length or len(self.room.sent_history) < self.room.host_history_length:
                 return
 
             # acknowledge receipt of session config
+            print(f"Got session (config length {self.room.session_config_length}, history length {self.room.host_history_length}) on frame {self.room.frame_no}")
             self.conn.sendall(bytes([HEADER_GET_SESSION]))
-            self.receiving_session = False
+            self.providing_session = False
+            return
 
         # conn is the socket object
         try:
@@ -142,13 +148,18 @@ class Connection:
             return
 
         if header[0] == HEADER_PUT_SESSION:
-            session_config_length = self.conn.recv(4)
-            if len(session_config_length) != 4 or self.room.session_config_length != 0:
+            session_config_length = self.conn.recv(11)
+            if len(session_config_length) != 11 or self.room.session_config_length != 0:
                 self.room.kill(self)
                 return
 
             self.providing_session = True
-            self.room.session_config_length = (session_config_length[0] << 24) + (session_config_length[1] << 16) + (session_config_length[2] << 8) + (session_config_length[3] << 0)
+            self.room.frame_no = (session_config_length[0] << 16) + (session_config_length[1] << 8) + (session_config_length[2] << 0)
+            self.room.session_config_length = (session_config_length[3] << 24) + (session_config_length[4] << 16) + (session_config_length[5] << 8) + (session_config_length[6] << 0)
+            self.room.host_history_length = (session_config_length[7] << 24) + (session_config_length[8] << 16) + (session_config_length[9] << 8) + (session_config_length[10] << 0)
+
+            self.acked_to = self.room.host_history_length
+            self.acked_frame = self.room.frame_no
             return self.read_in_room()
 
         if header[0] == HEADER_GET_SESSION:
@@ -200,14 +211,14 @@ class Connection:
 
                 self.tcp_frame_no = -1
 
-            frame_no = message[1] * 256 * 256 + message[2] * 256 + message[3]
-            if message[0] == MESSAGE_FRAME_BEGIN:
-                self.tcp_frame_no = frame_no
-                if frame_no - 1 > self.acked_frame:
-                    self.acked_frame = frame_no - 1
-                else:
-                    if frame_no > self.acked_frame:
-                        self.acked_frame = frame_no
+            if message[0] == MESSAGE_FRAME_BEGIN or message[0] == MESSAGE_FRAME_END:
+                tcp_frame_index = message[1] * 256 * 256 + message[2] * 256 + message[3]
+                if message[0] == MESSAGE_FRAME_END and tcp_frame_index > self.acked_frame:
+                    self.acked_frame = tcp_frame_index
+                elif message[0] == MESSAGE_FRAME_BEGIN:
+                    self.tcp_frame_no = tcp_frame_index
+                    if tcp_frame_index - 1 > self.acked_frame:
+                        self.acked_frame = tcp_frame_index - 1
             elif self.tcp_frame_no > self.acked_frame:
                 self.tcp_frame_in_progress.append(message)
 
@@ -222,6 +233,14 @@ class Connection:
 
             if message[0] == MESSAGE_FRAME_BEGIN or message[0] == MESSAGE_FRAME_END:
                 udp_frame_index = message[1] * 256 * 256 + message[2] * 256 + message[3]
+
+                # FIXME: figure out whether this is a good idea
+                # bad idea because game transmits UDP starting from the first un-acked frame with inputs, but doesn't clarify which frame this is
+                # reject UDP packets that start after acked_frame, as premature.
+                # if i == 0 and udp_frame_index > self.acked_frame + 1:
+                #     print(f"Ignoring premature UDP packet (starts {udp_frame_index}, last seen {self.acked_frame})")
+                #     return
+
                 if message[0] == MESSAGE_FRAME_END and udp_frame_index > self.acked_frame:
                     self.acked_frame = udp_frame_index
                 elif udp_frame_index - 1 > self.acked_frame:
@@ -319,6 +338,7 @@ class Room:
         # room state
         self.frame_no = 0
         self.session_config_length = 0
+        self.host_history_length = 0
         self.session_config = bytes()
         self.sent_history = bytes()
 
@@ -420,7 +440,6 @@ class Room:
         client.conn.sendall(bytes([
             HEADER_ROOM_KEY, self.room_key[0], self.room_key[1], self.room_key[2], self.room_key[3],
             new_id,
-            self.frame_no // (256 * 256), (self.frame_no // 256) % 256, self.frame_no % 256,
             client.session_key[0], client.session_key[1], client.session_key[2], client.session_key[3],
             ]))
         client.acked_to = 0
@@ -433,6 +452,11 @@ class Room:
         self.selector.register(client.conn, selectors.EVENT_READ, client.read)
         if client.data_conn:
             self.selector.register(client.data_conn, selectors.EVENT_READ, client.read_data)
+
+        # request session from host if the room is idle
+        if not self.session_config and new_id != 0 and self.clients[0]:
+            print("Client joined room, requesting host activation")
+            self.clients[0].conn.sendall(bytes([HEADER_KNOCK_KNOCK]))
 
     def transmit(self, client):
         # send UDP
@@ -492,7 +516,7 @@ class Room:
                 client.read_data_udp(msg)
 
         # don't run anything until we have a session_config
-        if not self.session_config or len(self.session_config) < self.session_config_length:
+        if not self.session_config or (len(self.session_config) < self.session_config_length) or (len(self.sent_history) < self.host_history_length):
             return
 
         # skip the frame if nobody is connected
@@ -546,7 +570,9 @@ class Room:
 
             if client.receiving_session:
                 if client.session_received == -1:
+                    print(f"Sending session (length {self.session_config_length}) to client")
                     client.conn.sendall(bytes([HEADER_PUT_SESSION,
+                        self.frame_no // (256 * 256), (self.frame_no // 256) % 256, self.frame_no % 256,
                         (self.session_config_length // (256 * 256 * 256)) % 256,
                         (self.session_config_length // (      256 * 256)) % 256,
                         (self.session_config_length //             (256)) % 256,

@@ -18,8 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <deque>
-
 #include "controls.h"
 #include "message.h"
 #include "globals.h"
@@ -28,6 +26,9 @@
 #include "player.h"
 #include "main/cheat_code.h"
 #include "main/screen_pause.h"
+#include "main/screen_options.h"
+
+#include <Logger/logger.h>
 
 #ifdef THEXTECH_ENABLE_SDL_NET
 #   include "main/client_methods.h"
@@ -36,7 +37,11 @@
 namespace XMessage
 {
 
-static std::deque<Message> s_message_vector;
+#ifdef THEXTECH_ENABLE_SDL_NET
+static std::vector<Message> s_message_submit_queue;
+#endif
+
+static std::vector<Message> s_message_vector;
 Session g_session;
 
 static Controls_t s_last_controls[maxNetplayPlayers + 1];
@@ -193,6 +198,8 @@ void Handle(const Message& m)
         SetupScreens();
         PlayersEnsureNearby(screen);
     }
+    else if(m.type == Type::episode_option_change || m.type == Type::compat_session_tweak_change)
+        OptionsScreen::ChangeOption(m);
 }
 
 void InitSession()
@@ -204,15 +211,37 @@ void InitSession()
 void Tick()
 {
 #ifdef THEXTECH_ENABLE_SDL_NET
+    const auto* status = GetClientStatus();
+    if(status->client_state == CLIENT_HOST_IDLE && status->knock_knock)
+        ActivateHost();
+
     // sync state with other clients here
-    if(CurrentRoom())
-        ClientFrameSync(s_message_vector);
+    if(XMessage::GetStatus() != XMessage::Status::local)
+        ClientFrameSync(s_message_submit_queue, s_message_vector);
+    // log state for future saving or syncing
+    else
+    {
+        g_session.current_frame++;
+
+        if(!s_message_submit_queue.empty())
+        {
+            g_session.history.push_back(msg_from_frame_no(Type::frame_begin, g_session.current_frame));
+
+            for(Message m : s_message_submit_queue)
+            {
+                g_session.history.push_back(m);
+                s_message_vector.push_back(m);
+            }
+
+            s_message_submit_queue.clear();
+        }
+    }
 #endif
 
     // update player controls based on message queue
-    Message m;
-    while((m = PopMessage()))
+    for(Message m : s_message_vector)
         Handle(m);
+    s_message_vector.clear();
 
     int numPlayers_p = numPlayers;
 
@@ -226,24 +255,17 @@ void Tick()
 
 void PushMessage_Direct(Message message)
 {
+#ifdef THEXTECH_ENABLE_SDL_NET
+    s_message_submit_queue.push_back(message);
+#else
     s_message_vector.push_back(message);
+#endif
 }
 
 void PushMessage(Message message)
 {
     message.screen = l_screen - &Screens[0];
     PushMessage_Direct(message);
-}
-
-Message PopMessage()
-{
-    Message ret;
-    if(s_message_vector.empty())
-        return ret;
-
-    ret = s_message_vector.front();
-    s_message_vector.pop_front();
-    return ret;
 }
 
 void PushControls(int l_player_i, const Controls_t& controls)

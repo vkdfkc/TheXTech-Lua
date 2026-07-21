@@ -2,11 +2,10 @@ TheXTech Changelog.
 
 Changelog for 1.3.8-dev
 -Unstable changes will go here for testing during the 1.3.7.x release lifespan...
--Update LVLX/WLDX/SAVX loader to use new MDX file parser (@ds-sloth)
 -3DS/Wii: disable partial support for loading SMBX-38A content (@ds-sloth)
 -Technical update: reduce mainloop nesting to improve engine flexibility (@ds-sloth)
 -Add experimental support for loading game/episode content from single-file archives (@ds-sloth)
--Important notice: gray and red bricks are now killed at the end of the frame they are destroyed (like other blocks). This is an intentional change to the game workflow that is required for us to support NetPlay. Content where these blocks have destroy / last events can no longer be loaded in Vanilla Mode. (@ds-sloth)
+-Important notice: gray and red bricks are now killed at the end of the frame they are destroyed (like other blocks). This is an intentional change to the game workflow that is required for us to support NetPlay. Content where these blocks have destroy / last events is no longer fully valid in Vanilla Mode. (@ds-sloth)
 -Improve the performance of levels with many coins, guarded by compat flag "optimize-coins". (@ds-sloth)
 -Improve the performance of levels with many conveyor belts, guarded by compat flag "new-conveyor-belts". (@ds-sloth)
 -In split screen, extra screen shake effects now apply only to the camera where the object is present. (@ds-sloth)
@@ -25,7 +24,15 @@ Changelog for 1.3.8-dev
 -Battle mode: allow multiple players to choose the same character (@ds-sloth)
 -For creators: add compat flag "alt-powerdown" which makes Chars 1 and 2 go to Big after being hit with a stronger powerup, and disables the item box (@ds-sloth)
 
-Changelog for 1.3.7.3-dev
+Changelog for 1.3.7.4-dev
+-Fix SMBX 1.3 bug where items on top of a vehicle could be lost when entering it, guarded by compat flag "fix-vehicle-item-loss" [Modern/Classic Mode] (@ds-sloth)
+-Wii: add overscan compensation options (@ds-sloth, thanks to @TheEeveeLovers for the report)
+-Fix SMBX 1.3 bug where a climbable NPC spawner (eg, vine top) would deactivate if the player left the section, guarded by compat flag "fix-npc-camera-logic" [Modern/Classic Mode] (@ds-sloth, thanks to @Wohlstand for the report)
+-Fix TheXTech 1.3.6.1 bug where Toothy (NPC ID 50) would sometimes become invisible while the player is holding the toothy pipe (@ds-sloth, thanks to @Liebning for the report)
+-Fixed broken user directory handling on the Haiku (@Wohlstand)
+
+Changelog for 1.3.7.3
+-Update LVLX/WLDX/SAVX loader to use new MDX file parser by ds-sloth (speeds up level/world loads on slow devices) (@ds-sloth, @Wohlstand)
 -Fixed an inability to save the state of the collected medals on triggering the game beat (@Wohlstand, thanks to @Liebning for the report)
 -Fixed a TTF text print bug from the version 1.3.7.2 that caused missing vertical offset on line breaking (@Wohlstand, thanks to 呜哩哇啦 for the report)
 -Wii: fix v1.3.7.2 bug where deleting an in-use controls profile could lead to a crash (@ds-sloth)
@@ -42,6 +49,17 @@ Changelog for 1.3.7.3-dev
 -Added localisation support for custom stars requirement messages shown when player attempts to enter a warp and they don't have enough stars (@Wohlstand)
 -Fix SMBX 1.3 bug where jumping out of a shoe above the section could cause it to despawn, guarded by compat flag "fix-npc-camera-logic" [Modern/Classic Mode] (@ds-sloth, thanks to @Liebning for the report)
 -Fix SMBX 1.3 bug where player could get stuck in fairy state if they hit a fairy power while stoned, guarded by compat flag "fix-fairy-stuck-in-pipe" [Modern/Classic Mode] (@ds-sloth, thanks to @Fire-Ball54322 for the report)
+-Bugfix: don't continually loop if a load failure occurs when the restart level flag is set (@ds-sloth)
+-Bugfix: quit the episode if the hub level can't be reloaded (@ds-sloth)
+-Fixed an unexpected going to the last sub-hub level instead of the world map even explicit coordinates are been specified (@Wohlstand, thanks to @Liebning for the report)
+-Fixed the case when checkpoints won't reset when successfully quitting a level via warp exits, guarded by compat flag "fix-warp-exit-checkpoints" [Modern Mode] (@Wohlstand)
+-Fixed the unwanted triggering of the IME candidates window during the gameplay use of the keyboard when PinYin or any other IME method is enabled. (@Wohlstand)
+Changelog for 1.3.7.3-hotfix1
+-Adjusted the IME start logic to enable it when direct text input is enabled (@ds-sloth)
+-Fixed build on FreeBSD (@Wohlstand and also contributed by @Sumimi~)
+-Fixed behaviour of the MD5 algorithm on Big Endian hardware (@ds-sloth)
+-Fixed a critical bug of checkpoints being reset when re-entering normal level from the hub (@Wohlstand)
+-Fixed TheXTech bug where medals were incorrectly saved after death in hub worlds (@ds-sloth)
 
 Changelog for 1.3.7.2
 -i18n: Added support for the localisation of the loading screen (@Wohlstand)

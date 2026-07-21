@@ -249,6 +249,13 @@ public:
     static constexpr int scale_mode = SCALE_DYNAMIC_NEAREST;
 #endif
 
+#ifdef __WII__
+    opt_range<int> overscan_x{this, {0, 5, 1}, defaults(0), {}, Scope::Config,
+        "overscan-x", "Overscan X", nullptr, config_res_set};
+    opt_range<int> overscan_y{this, {0, 5, 1}, defaults(0), {}, Scope::Config,
+        "overscan-y", "Overscan Y", nullptr, config_res_set};
+#endif
+
 #ifdef __3DS__
     opt<bool> td_compat_mode{this, defaults(false), {}, Scope::Config,
         "3d-compat-mode", "3D compat mode", "Draw all objects in one 3D plane"};
@@ -968,6 +975,12 @@ public:
     // 1.3.7.3
     opt<bool> fix_char_pass_balls{this, defaults(true), {CompatClass::standard_update, false}, Scope::CreatorFile,
         "fix-char-pass-balls", "Fix char-pass balls", "Fix char 2-4's iceballs and char 5's fire/iceballs on char-pass blocks"};
+    opt<bool> fix_warp_exit_checkpoints{this, defaults(true), {CompatClass::standard_update, false}, Scope::CreatorFile,
+        "fix-warp-exit-checkpoints", "Fix warp exit checkpoints", "Fixes the problem when checkpoints weren't been reset when player correctly exits level via warps."};
+
+    // 1.3.7.4
+    opt<bool> fix_vehicle_item_loss{this, defaults(true), {CompatClass::critical_update, false}, Scope::CreatorFile,
+        "fix-vehicle-item-loss", "Fix vehicle item loss", "Prevents risk of losing items when entering vehicle"};
 
     // 1.3.8
     opt<bool> new_conveyor_belts{this, defaults(true), {CompatClass::standard_update, false}, Scope::Creator,

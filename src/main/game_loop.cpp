@@ -242,10 +242,9 @@ resume_IntroEvents:
 
     if(!Controls::Update())
     {
-        QuickReconnectScreen::g_active = true;
-
+        // request a pause of the game, locally going to the drop-add screen
         if(g_config.allow_drop_add && !TestLevel && XMessage::GetStatus() == XMessage::Status::local)
-            PauseGame(PauseCode::DropAdd, 0);
+            PauseScreen::RequestForcedPause(PauseCode::DropAdd);
     }
 
     if(QuickReconnectScreen::g_active)
@@ -315,6 +314,12 @@ resume_IntroEvents:
                 FileRecentSubHubLevel.clear();
                 ReturnWarp = 0;
                 ReturnWarpSaved = 0;
+            }
+            // New logic: otherwise, reset beat code if hub level
+            // (Safe because SMBX 1.3 only uses LevelBeatCode on the world map)
+            else if(IsHubLevel)
+            {
+                LevelBeatCode = BEATCODE_NONE;
             }
         }
 

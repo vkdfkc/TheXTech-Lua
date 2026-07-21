@@ -47,11 +47,15 @@
 
 #ifdef PGE_ENGINE_DEBUG
 
-#ifdef __gnu_linux__
+#if defined(__gnu_linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#   if !defined(__gnu_linux__)
+#       define PGE_BSD_BUILD
+#       include <pwd.h>
+#   endif
 #endif
 
 #ifdef __APPLE__
@@ -165,6 +169,10 @@ static int isDebuggerPresent()
 #   include <dbghelp.h>
 #   include <shlobj.h>
 #elif (defined(__linux__) && !defined(__ANDROID__) || defined(__APPLE__))
+#   include <pwd.h>
+#   include <unistd.h>
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#   define PGE_BSD_BUILD
 #   include <pwd.h>
 #   include <unistd.h>
 #elif defined(__ANDROID__)
@@ -328,6 +336,14 @@ static std::string getCurrentUserName()
     userName[nCnt] = '\0';
     user = std::string(userName);
 #   endif
+#elif defined(PGE_BSD_BUILD)
+    struct passwd buff, *pwd;
+    char buff_s[1024];
+
+    if(getpwuid_r(getuid(), &buff, buff_s, sizeof(buff_s), &pwd) != 0)
+        return "UnknownUser"; // Failed to get a user name!
+
+    user = std::string(pwd->pw_name);
 #else
     struct passwd *pwd = getpwuid(getuid());
     if(pwd == nullptr)
@@ -360,6 +376,14 @@ static std::string getCurrentHomePath()
             return "/home/<unknown>"; // Failed to get a user name!
         homedir = std::string(home);
     }
+#elif defined(PGE_BSD_BUILD)
+    struct passwd buff, *pwd;
+    char buff_s[1024];
+
+    if(getpwuid_r(getuid(), &buff, buff_s, sizeof(buff_s), &pwd) != 0)
+        return "/home/<unknown>"; // Failed to get a user name!
+
+    homedir = std::string(pwd->pw_dir);
 #else
     struct passwd *pwd = getpwuid(getuid());
     if(pwd == nullptr)

@@ -1,6 +1,6 @@
 # ============================ Generic setup ==================================
 # If platform is Emscripten
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     set(EMSCRIPTEN 1 BOOLEAN)
     unset(WIN32)
     unset(APPLE)
@@ -9,6 +9,10 @@ endif()
 if(APPLE AND CMAKE_HOST_SYSTEM_VERSION VERSION_LESS 9)
     message("-- MacOS X 10.4 Tiger detected!")
     set(XTECH_MACOSX_TIGER TRUE)
+endif()
+
+if("${CMAKE_SYSTEM_NAME}" MATCHES "(Open|Free|Net)BSD")
+    set(XTECH_BSD_BUILD TRUE)
 endif()
 
 # =========================== Architecture info ===============================

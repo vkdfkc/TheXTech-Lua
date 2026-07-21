@@ -64,6 +64,8 @@ enum NetworkHeader
 
     HEADER_PUT_SESSION = 15,
     HEADER_GET_SESSION = 16,
+
+    HEADER_KNOCK_KNOCK = 17,
 };
 
 // enum BufferState
@@ -112,19 +114,106 @@ struct RecvBuffer
 struct SendBuffer
 {
     std::deque<Message> messages;
-    int current_frame = -1;
 
     std::vector<uint8_t> tcp_transmit_in_progress;
     size_t tcp_transmit_pos = 0;
 };
 
+struct MutexSent final
+{
+    SDL_mutex* mutex = nullptr;
+
+    MutexSent(const MutexSent&) = delete;
+    MutexSent& operator=(const MutexSent&) = delete;
+    MutexSent(MutexSent&& o)
+    {
+        release();
+        mutex = o.mutex;
+        o.mutex = nullptr;
+    }
+
+    MutexSent(SDL_mutex* _mutex)
+    {
+        mutex = _mutex;
+
+        if(mutex)
+            SDL_LockMutex(mutex);
+    }
+
+    ~MutexSent()
+    {
+        release();
+    }
+
+    void release()
+    {
+        if(mutex)
+            SDL_UnlockMutex(mutex);
+
+        mutex = nullptr;
+    }
+
+    operator bool() const
+    {
+        return this->mutex;
+    }
+};
+
+int client_thread(void* _client);
+
+struct NetworkClientState
+{
+    int current_frame = 0;
+    int available_frame = -1;
+    int remote_frame = -1;
+
+    std::vector<Message> new_history;
+};
+
 struct NetworkClient
 {
+    friend int client_thread(void* _client);
+
+    static int frame_no_from_message(XMessage::Message message);
+
+    // synchronization state
+public:
     SDL_Thread* thread = nullptr;
     SDL_sem* client_wakeup = nullptr;
     SDL_sem* game_wakeup = nullptr;
     bool shutdown = false;
 
+    // both to be called from main thread
+    void Startup();
+    void Shutdown();
+
+    // status requests -- sent by main thread, used by network thread
+public:
+    SDL_mutex*   status_req_sync_lock; // locked by main thread when altering status_req and by network thread when reading status_req (try_lock) or when altering gameplay state
+    ClientStatus status_req_sync;      // copy of status_req to synchronize from main thread to network thread
+    SDL_atomic_t status_req_id;        // incremented by main thread to indicate new status change request
+    SDL_atomic_t status_req_completed; // set by network thread to indicate completed status changes
+private:
+    ClientStatus status_req;                     // network thread's copy of status_req
+    int          status_req_id_seen = 0;         // set by network thread to indicate seen requests
+    int          status_req_in_progress = false; // tracks whether the network thread is currently responding to a status change request
+
+    void pull_status_req();
+
+    // status change notifications -- sent by network thread, used by main thread
+public:
+    SDL_mutex*   status_sync_lock;     // try_locked by main thread when copying status, locked by network thread when altering status
+    ClientStatus status_sync;          // copy of status to synchronize from network thread to main thread
+    SDL_atomic_t status_alarm_id;      // incremented by network thread to indicate new status change
+private:
+    ClientStatus status;               // network thread's copy of status
+
+    void push_status();
+    void push_completed_request();
+
+    MutexSent get_session_access();
+
+private:
     TCPWrapper tcp_control;
     TCPWrapper tcp_data;
     UDPsocket  udp_socket = nullptr;
@@ -136,17 +225,12 @@ struct NetworkClient
     SDLNet_SocketSet socket_set = nullptr;
     uint32_t session_key = 0;
 
-    int fast_forward_to = INT_MAX;
-
-    SDL_atomic_t status_req_state;
-    ClientStatus status_req;
-    ClientStatus status;
-
     RecvBuffer receive_buffer;
     SendBuffer send_buffer;
 
-    SDL_atomic_t message_buffer_state;
-    std::deque<Message> message_buffer;
+private:
+    // network thread's copy of critical game state, to avoid needing to synchronize prematurely.
+    NetworkClientState temp_state;
 
     // ping info
     int ping_send_frame = -1;
@@ -158,20 +242,16 @@ struct NetworkClient
 
     bool sdlnet_inited = false;
 
-    void EnsureThread();
-
     void Connect(const char* host, int port);
     void Disconnect(bool shutdown = false);
-
-    void Shutdown();
 
     XMessage::Message ParseMessage(const uint8_t* message);
 
     // misc in-game calls
     void LeaveRoom();
 
-    // load messages into send buffer
-    void SendAll();
+    // load messages into send buffer, and store history into g_session
+    void SyncData();
 
     // transmit messages
     void SendData();

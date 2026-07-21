@@ -2939,10 +2939,18 @@ void NPCSpecial(int A)
                                 if(p.Dead || p.TimeToLive || p.Effect != PLREFF_NORMAL || p.CurMazeZone)
                                     continue;
 
-                                // give tapes for flag exit
+                                p.Location.X = npc.Location.X - p.Location.Width;
+
+                                if(p.Location.SpeedX > npc.Location.SpeedX)
+                                    p.Location.SpeedX = npc.Location.SpeedX;
+
+                                if(p.Location.Y + p.Location.Height < npc.Location.Y + npc.Location.Height)
+                                    continue;
+
+                                // give points for flag exit
                                 int score = 10;
 
-                                int gap = num_t::floor(p.Location.Y) - num_t::floor(npc.Location.Y);
+                                int gap = num_t::floor(p.Location.Y) - num_t::floor(npc.Location.Y) - 8;
                                 if(gap > 0)
                                     score -= (gap + 31) / 32;
 
@@ -2964,7 +2972,10 @@ void NPCSpecial(int A)
                             TurnNPCsIntoCoins();
 
                             if(g_ClonedPlayerMode)
+                            {
+                                // BUG: should be i
                                 Player[1] = Player[A];
+                            }
 
                             for(int j = 1; j <= numPlayers; j++)
                             {
@@ -2985,10 +2996,12 @@ void NPCSpecial(int A)
                             if(npc.Type == NPCID_FLAG_EXIT)
                             {
                                 LevelMacro = LEVELMACRO_FLAG_EXIT;
+                                LevelMacroWhich = A;
+                                LevelMacroCounter = -16; // 16 frames of waiting once player reaches ground
+                                UnDuck(Player[i]);
+                                Player[i].SpinJump = false;
                                 // go towards the ground
                                 npc.Location.Y += 2;
-                                // wait for player to reach ground
-                                LevelMacroWhich = -16;
                                 PlaySound(SFX_FlagExit);
                             }
                             else

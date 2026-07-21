@@ -900,25 +900,18 @@ void NPCBlockLogic(int A, num_t& tempHit, int& tempHitBlock, tempf_t& tempSpeedA
                                         {
                                             resetBeltSpeed = true;
 
-                                            if(Block[B].tempBlockNpcType != 0)
-                                            {
-                                                if(Block[B].Location.SpeedY > 0 && Block[B].tempBlockNpcType >= NPCID_YEL_PLATFORM && Block[B].tempBlockNpcType <= NPCID_RED_PLATFORM)
-                                                    tempHit = Block[B].Location.Y - NPC[A].Location.Height - 0.01_n + Block[B].Location.SpeedY;
-                                                else
-                                                    tempHit = Block[B].Location.Y - NPC[A].Location.Height - 0.01_n;
-
-                                                tempHitBlock = B;
-                                            }
-                                            else
-                                            {
-                                                tempHitBlock = B;
-                                                tempHit = Block[B].Location.Y - NPC[A].Location.Height - 0.01_n;
-                                            }
+                                            // simplified from VB6: rail/lineguide special case moved below
+                                            tempHitBlock = B;
+                                            tempHit = Block[B].Location.Y - NPC[A].Location.Height - 0.01_n;
 
                                             if(Block[B].tempBlockNpcType >= NPCID_YEL_PLATFORM && Block[B].tempBlockNpcType <= NPCID_RED_PLATFORM)
                                             {
                                                 beltSpeed = 0;
                                                 beltCount = 0;
+
+                                                // moved from above
+                                                if(Block[B].Location.SpeedY > 0)
+                                                    tempHit += Block[B].Location.SpeedY;
                                             }
 
                                             num_t C = 0;
@@ -960,13 +953,16 @@ void NPCBlockLogic(int A, num_t& tempHit, int& tempHitBlock, tempf_t& tempSpeedA
                                                 }
                                             }
 
-                                            if(((NPC[A]->StandsOnPlayer && !NPC[A].Projectile) || (NPC[A]->IsAShell && NPC[A].Location.SpeedX == 0)) && Block[B].tempBlockVehiclePlr > 0)
+                                            // IsAShell section was dead in VB6: IsAShell was mutually exclusive with StandsOnPlayer, and all non-StandsOnPlayer NPCs cancelled their collisions above
+                                            if(((NPC[A]->StandsOnPlayer && !NPC[A].Projectile) /*|| (NPC[A]->IsAShell && NPC[A].Location.SpeedX == 0)*/) && Block[B].tempBlockVehiclePlr > 0)
                                             {
                                                 // IMPORTANT: this case was truncation until v1.3.7.1-dev. Confirm that changing to VB6 rounding does not cause any issues.
                                                 NPC[A].vehicleYOffset = Block[B].tempBlockVehicleYOffset + num_t::vb6round(NPC[A].Location.Height);
                                                 NPC[A].vehiclePlr = Block[B].tempBlockVehiclePlr;
-                                                if(NPC[A].vehiclePlr == 0 && Block[B].tempBlockNpcType == NPCID_VEHICLE)
-                                                    NPC[A].TimeLeft = 100;
+
+                                                // dead code from VB6: vehiclePlr must be greater than 0!
+                                                // if(NPC[A].vehiclePlr == 0 && Block[B].tempBlockNpcType == NPCID_VEHICLE)
+                                                //     NPC[A].TimeLeft = 100;
                                             }
 
                                             if(NPC[A].Projectile)
@@ -1041,6 +1037,10 @@ void NPCBlockLogic(int A, num_t& tempHit, int& tempHitBlock, tempf_t& tempSpeedA
                                                             bool tempBool = false;
                                                             for(int C = 1; C <= numPlayers; C++)
                                                             {
+                                                                // allow thrown key to attach to player in vehicle
+                                                                if(g_config.fix_vehicle_item_loss && NPC[A]->StandsOnPlayer && Player[C].Mount == 2)
+                                                                    continue;
+
                                                                 if(CheckCollision(NPC[A].Location, Player[C].Location))
                                                                 {
                                                                     tempBool = true;

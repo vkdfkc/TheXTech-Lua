@@ -524,6 +524,10 @@ target_compile_definitions(A2XT_Int INTERFACE
     -DINI_PROCESSING_USE_MDX_PARSER  # IniProcessor should use the MDX tokenizer for lists
 )
 
+if(XTECH_BSD_BUILD)
+    list(APPEND A2XT_INCS "/usr/local/include")  # Workaround
+endif()
+
 include(cmake/library_glew.cmake)
 include(cmake/library_syslibs.cmake)
 
@@ -574,6 +578,17 @@ elseif(NOT THEXTECH_NO_SDL_BUILD)
         list(APPEND A2XT_LIBS PGE_SDLMixerX_static)
     endif()
 
+    if(NOT USE_SYSTEM_SDL2 AND XTECH_BSD_BUILD)
+        list(APPEND A2XT_LIBS usbhid)
+        find_library(LIBUSB_LIB NAMES usb)
+        find_library(HIDAPI_LIB NAMES hidapi)
+
+        if(LIBUSB_LIB AND HIDAPI_LIB)
+            list(APPEND A2XT_LIBS ${LIBUSB_LIB} ${HIDAPI_LIB})
+        else()
+        endif()
+    endif()
+
 # UNIX seems to be too general -- how to target desktop Linux specifically?
 #    if(UNIX AND (THEXTECH_BUILD_GL_DESKTOP_MODERN OR THEXTECH_BUILD_GL_DESKTOP_LEGACY OR THEXTECH_BUILD_GL_ES_MODERN OR THEXTECH_BUILD_GL_ES_LEGACY))
 #        list(APPEND A2XT_LIBS GL)
@@ -613,6 +628,10 @@ elseif(NOT THEXTECH_NO_SDL_BUILD)
     endif()
 
     list(APPEND A2XT_LIBS PGE_ZLib)
+
+    if(HAIKU)
+        list(APPEND A2XT_LIBS be)
+    endif()
 endif()
 
 if(THEXTECH_ENABLE_DISCORD_RPC)
@@ -676,27 +695,12 @@ if(NINTENDO_DS AND CALICO_ROOT)
     target_link_libraries(A2XT_Int INTERFACE xtbootstrap)
 endif()
 
-add_subdirectory(3rdparty/mbediso EXCLUDE_FROM_ALL)
-if(NOT THEXTECH_NO_SDL_BUILD)
-    if(NOT USE_SYSTEM_SDL2)
-        target_include_directories(mbediso PRIVATE "${DEPENDENCIES_INSTALL_DIR}/include")
-        add_dependencies(mbediso AudioCodecs_Local)
-    else()
-        target_include_directories(mbediso PRIVATE "${SDL2_INCLUDE_DIRS}")
-    endif()
-endif()
+include(cmake/library_mbediso.cmake)
 target_link_libraries(A2XT_Int INTERFACE mbediso)
 target_compile_definitions(A2XT_Int INTERFACE
     -DPGE_USE_ARCHIVES   # DirMan should use the archives library
     -DPGE_FILES_PRESENT  # DirMan should use the Files checkSuffix routine
 )
-
-if(ANDROID)
-    set_target_properties(lz4 PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    set_target_properties(lz4_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    set_target_properties(mbediso PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()
-
 
 target_link_libraries(A2XT_Int INTERFACE ${A2XT_LIBS})
 target_include_directories(A2XT_Int INTERFACE ${A2XT_INCS})
@@ -1670,7 +1674,7 @@ else()
 endif()
 
 if(USE_STATIC_LIBC AND NOT USE_SYSTEM_LIBS)
-    if(NOT APPLE AND NOT MSVC)
+    if(NOT APPLE AND NOT MSVC AND NOT XTECH_BSD_BUILD)
 #        target_link_libraries(thextech PRIVATE -static)
         set_property(TARGET thextech APPEND_STRING PROPERTY LINK_FLAGS " -static-libgcc -static-libstdc++")
     endif()
@@ -1831,7 +1835,7 @@ elseif(EMSCRIPTEN)
 
 elseif(HAIKU)
     string(TIMESTAMP XTECH_HAIKU_COPYRIGHT_YEAR "%Y")
-    message("-- Haiku package version: ${THEXTECH_HAIKU_VERSION_STRING} (Yer ${XTECH_HAIKU_COPYRIGHT_YEAR})")
+    message("-- Haiku package version: ${THEXTECH_HAIKU_VERSION_STRING} (Year ${XTECH_HAIKU_COPYRIGHT_YEAR})")
     set(DESKTOP_NAME "TheXTech" CACHE STRING "Name for the application icon")
     set(XTECH_HAIKU_SHORT_DESC "TheXTech is an open-source continuation of the SMBX 1.3 platformer game engine. Its highest priority is full compatibility with the SMBX 1.3 content standard, but it also adds a number of enhancements and bugfixes." CACHE STRING "Description for the installable Haiku package.")
     configure_file("${CMAKE_SOURCE_DIR}/resources/haiku/PackageInfo.in" "${CMAKE_BINARY_DIR}/package/.PackageInfo")
@@ -1907,10 +1911,12 @@ elseif(HAIKU)
                 "${CMAKE_BINARY_DIR}/icon.rsrc"
         COMMENT "Assigning icon to ${THEXTECH_EXECUTABLE_NAME}...")
 
-    add_custom_command(
-        TARGET make_hkpg PRE_BUILD
-        COMMAND cp -a "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/*.so*" "${CMAKE_BINARY_DIR}/package/apps/TheXTech/lib/"
-    )
+    if(USE_SHARED_FREEIMAGE OR PGE_SHARED_SDLMIXER)
+        add_custom_command(
+            TARGET make_hkpg PRE_BUILD
+            COMMAND cp -a "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/*.so*" "${CMAKE_BINARY_DIR}/package/apps/TheXTech/lib/"
+        )
+    endif()
 
     add_custom_command(
         TARGET make_hkpg PRE_BUILD
@@ -1919,11 +1925,19 @@ elseif(HAIKU)
                 "${CMAKE_BINARY_DIR}/package/data/deskbar/menu/Applications/${DESKTOP_NAME}"
     )
 
-    add_custom_command(
-        TARGET make_hkpg POST_BUILD
-        COMMAND package create -C "${CMAKE_BINARY_DIR}/package/"
-                "${CMAKE_BINARY_DIR}/${THEXTECH_INSTALLER_PACKAGE_NAME}_bin-${THEXTECH_HAIKU_VERSION_STRING}-${TARGET_PROCESSOR}.hpkg"
-    )
+    if(NOT HAIKU_PACKAGE_FILE_NAME)
+        add_custom_command(
+            TARGET make_hkpg POST_BUILD
+            COMMAND package create -C "${CMAKE_BINARY_DIR}/package/"
+                    "${CMAKE_BINARY_DIR}/${THEXTECH_INSTALLER_PACKAGE_NAME}_bin-${THEXTECH_HAIKU_VERSION_STRING}-${TARGET_PROCESSOR}.hpkg"
+        )
+    else()
+        add_custom_command(
+            TARGET make_hkpg POST_BUILD
+            COMMAND package create -C "${CMAKE_BINARY_DIR}/package/"
+                    "${CMAKE_BINARY_DIR}/${HAIKU_PACKAGE_FILE_NAME}.hpkg"
+        )
+    endif()
 
 else()
     install(TARGETS thextech

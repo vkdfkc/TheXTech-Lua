@@ -512,6 +512,15 @@ void video_set_rmode()
         new_rmode.efbHeight = new_rmode.efbHeight * 3 / 4;
     }
 
+    new_rmode.fbWidth += g_config.overscan_x * 16;
+    new_rmode.efbHeight += g_config.overscan_y * 16;
+
+    if(new_rmode.fbWidth > 640)
+        new_rmode.fbWidth = 640;
+
+    if(new_rmode.efbHeight > 480)
+        new_rmode.efbHeight = 480;
+
     if(new_rmode.fbWidth == rmode.fbWidth && new_rmode.efbHeight == rmode.efbHeight)
         return;
 

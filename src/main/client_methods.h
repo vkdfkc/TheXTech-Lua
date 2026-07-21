@@ -25,7 +25,6 @@
 #ifndef XCLIENT_METHODS_H
 #define XCLIENT_METHODS_H
 
-#include <deque>
 #include <cstdint>
 #include <string>
 
@@ -58,7 +57,9 @@ enum ClientState
     CLIENT_SESSION_CONFIG, // joined room but haven't yet sent/received session
     CLIENT_LOBBY,
     CLIENT_HOST_IDLE,
-    CLIENT_HOST_SPECTATED,
+    // first active state
+    CLIENT_MIN_ACTIVE_STATE,
+    CLIENT_HOST_SPECTATED = CLIENT_MIN_ACTIVE_STATE,
     CLIENT_HOST,
     CLIENT_GUEST,
     CLIENT_SPECTATOR,
@@ -71,21 +72,51 @@ struct ClientStatus
     int server_port = 4305;
     RoomInfo room_info;
     int client_index = 0;
+    bool knock_knock = false;
 };
+
+struct GameThread
+{
+    ClientStatus status_req;
+    ClientStatus status;
+
+    // track new replies
+    int status_req_reply_seen = 0;
+
+    // track new status updates
+    int status_alarm_id_seen = 0;
+
+    void push_status_req();
+    bool pull_status();
+    bool status_req_completed();
+};
+
+inline XMessage::Message msg_from_frame_no(XMessage::Type type, uint32_t frame_no)
+{
+    XMessage::Message ret;
+    ret.type = type;
+    ret.screen = (uint8_t)(frame_no >> 16);
+    ret.player = (uint8_t)(frame_no >> 8);
+    ret.message = (uint8_t)(frame_no >> 0);
+
+    return ret;
+}
 
 void Connect(const char* host = nullptr);
 void Disconnect();
-void Shutdown();
+void NetStartup();
+void NetShutdown();
 const ClientStatus* GetClientStatus();
 bool CompleteRequest();
 
-void ClientFrameSync(std::deque<Message>& buffer);
+void ClientFrameSync(std::vector<Message>& submit_queue, std::vector<Message>& message_vector);
 
 bool RequestFillRoomInfo(uint32_t room_key);
 const RoomInfo* GetRoomInfo();
 
 void JoinNewRoom(const RoomInfo& room_info);
 void JoinRoom(uint32_t room_key);
+void ActivateHost();
 uint32_t CurrentRoom();
 void LeaveRoom();
 

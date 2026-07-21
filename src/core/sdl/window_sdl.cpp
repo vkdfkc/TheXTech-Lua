@@ -37,6 +37,8 @@
 #include "../render.h"
 #include "config.h"
 #include "../version.h"
+#include "controls.h"
+#include "control/keyboard.h"
 
 
 #ifdef RENDER_FULLSCREEN_TYPES_SUPPORTED
@@ -365,9 +367,9 @@ static void s_updateSysInfo()
     videoMemSize = s_getVideoRam();
 
     pLogDebug("Windows Version: %u.%u, CPU type: %u, Video memory: %d MB",
-              osvi.dwMajorVersion,
-              osvi.dwMinorVersion,
-              sysInfo.dwProcessorType,
+              (unsigned int)osvi.dwMajorVersion,
+              (unsigned int)osvi.dwMinorVersion,
+              (unsigned int)sysInfo.dwProcessorType,
               videoMemSize
     );
 
@@ -693,6 +695,11 @@ bool WindowSDL::isSdlError()
 void WindowSDL::show()
 {
     SDL_ShowWindow(m_window);
+
+#if defined(_WIN32)
+    /* Workaround: Don't enable text input when it's unnecessary! Otherwise the IME gets toggled when is not needed! */
+    SDL_StopTextInput();
+#endif
 }
 
 void WindowSDL::hide()
@@ -736,6 +743,31 @@ void WindowSDL::placeCursor(int window_x, int window_y)
         if(window_x >= 0 && window_x < window_w && window_y >= 0 && window_y < window_h)
             SDL_WarpMouseInWindow(m_window, window_x, window_y);
     }
+}
+
+void WindowSDL::textInputStart()
+{
+    bool direct_text = true;
+    for(const Controls::InputMethodType* im : Controls::g_InputMethodTypes)
+    {
+        const auto* im_keyboard = dynamic_cast<const Controls::InputMethodType_Keyboard*>(im);
+        if(im_keyboard && !im_keyboard->m_directText)
+            direct_text = false;
+    }
+
+    if(direct_text)
+        SDL_StartTextInput();
+}
+
+void WindowSDL::textInputStop()
+{
+    SDL_StopTextInput();
+}
+
+void WindowSDL::textInputSetRect(int x, int y, int w, int h)
+{
+    SDL_Rect r = {x, y, w, h};
+    SDL_SetTextInputRect(&r);
 }
 
 bool WindowSDL::isFullScreen()

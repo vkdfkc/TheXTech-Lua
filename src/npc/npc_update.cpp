@@ -760,6 +760,10 @@ interrupt_Activation:
             Block[numBlock].Location.Width = num_t::floor(Block[numBlock].Location.Width) + 1;
             Block[numBlock].tempBlockVehiclePlr = A;
 
+            // use ceiling instead of floor + 1 for vehicle position to prevent items clipping through
+            if(g_config.fix_vehicle_item_loss)
+                Block[numBlock].Location.Y = num_t::ceil(Player[A].Location.Y);
+
             // delay add to below if it will be sorted
             if(!g_config.emulate_classic_block_order)
                 treeTempBlockAdd(numBlock);
@@ -1178,9 +1182,12 @@ interrupt_Activation:
             if((NPC[A].Type == NPCID_VILLAIN_S3 || NPC[A].Type == NPCID_FIRE_DISK || NPC[A].Type == NPCID_FIRE_CHAIN) && NPC[A].TimeLeft > 1)
                 NPC[A].TimeLeft = 100;
 
+            const bool npc_is_vine_top = (NPC[A].Type == NPCID_RED_VINE_TOP_S3 || NPC[A].Type == NPCID_GRN_VINE_TOP_S3 || NPC[A].Type == NPCID_GRN_VINE_TOP_S4);
+
             if(!(NPC[A].Type == NPCID_PLR_FIREBALL || (NPC[A]->IsFish && NPC[A].Special == 2) ||
                  NPC[A].Type == NPCID_TOOTHY || NPC[A].Type == NPCID_VEHICLE || NPC[A].Type == NPCID_YEL_PLATFORM || NPC[A].Type == NPCID_BLU_PLATFORM ||
-                 NPC[A].Type == NPCID_GRN_PLATFORM || NPC[A].Type == NPCID_RED_PLATFORM || NPC[A].Type == NPCID_VILLAIN_S3 || NPCIsYoshi(NPC[A])) &&
+                 NPC[A].Type == NPCID_GRN_PLATFORM || NPC[A].Type == NPCID_RED_PLATFORM || NPC[A].Type == NPCID_VILLAIN_S3 || NPCIsYoshi(NPC[A])
+                 || (npc_is_vine_top && g_config.fix_npc_camera_logic)) &&
                  NPC[A].HoldingPlayer == 0)
             {
                 int C = 0;
@@ -1194,7 +1201,7 @@ interrupt_Activation:
                     NPC[A].TimeLeft = 0;
             }
 
-            if((NPC[A].Type == NPCID_RED_VINE_TOP_S3 || NPC[A].Type == NPCID_GRN_VINE_TOP_S3 || NPC[A].Type == NPCID_GRN_VINE_TOP_S4) && NPC[A].TimeLeft > 10)
+            if(npc_is_vine_top && NPC[A].TimeLeft > 10)
                 NPC[A].TimeLeft = 100;
 
             if(NPC[A].TimeLeft > 10 && NoTurnBack[NPC[A].Section])

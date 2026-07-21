@@ -49,6 +49,7 @@
 #include "main/game_strings.h"
 #include "main/game_info.h"
 #include "main/game_loop_interrupt.h"
+#include "main/level_medals.h"
 
 
 static constexpr int plr_warp_scroll_speed = 8; // 8px / frame
@@ -1213,7 +1214,7 @@ void PlayerEffectWarpWait(int A)
 
             const Screen_t& screen = ScreenByPlayer(A);
 
-            bool do_modern = !g_ClonedPlayerMode && (numPlayers > 2 || screen.Type == ScreenTypes::SharedScreen || XMessage::GetStatus() != XMessage::Status::local);
+            bool do_modern = !g_ClonedPlayerMode && (numPlayers > 2 || screen.Type == ScreenTypes::SharedScreen || numPlayers > Screens[0].player_count);
             if(!do_modern)
             {
                 // 2P holding condition for start warp
@@ -1280,6 +1281,9 @@ void PlayerEffectWarpWait(int A)
                     WorldPlayer[1].Location.X = w.MapX;
                     WorldPlayer[1].Location.Y = w.MapY;
 
+                    // Forget about sub-hub -- it's an explicit target to the world map!
+                    FileRecentSubHubLevel.clear();
+
                     for(int l = 1; l <= numWorldLevels; ++l)
                     {
                         if(CheckCollision(WorldPlayer[1].Location, WorldLevel[l].Location))
@@ -1290,6 +1294,15 @@ void PlayerEffectWarpWait(int A)
                     }
                 }
             }
+
+            // Checkpoints must be reset when player successfully quits a level
+            if(g_config.fix_warp_exit_checkpoints && !IsHubLevel)
+            {
+                Checkpoint.clear();
+                CheckpointsList.clear();
+                g_curLevelMedals.reset_checkpoint();
+            }
+
             EndLevel = true;
             return;
         }

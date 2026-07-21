@@ -1060,6 +1060,7 @@ int GameMain(const CmdLineSetup_t &setup)
             SuperSpeed = false;
             FlyForever = false;
             BeatTheGame = false;
+            g_VanillaInvalid = false;
             g_ForceBitmaskMerge = false;
 #ifdef __3DS__
             g_ForceBitmaskMerge = g_config.inaccurate_gifs;
@@ -1285,6 +1286,8 @@ int GameMain(const CmdLineSetup_t &setup)
                 ResetSoundFX();
                 ClearLevel();
 
+                bool is_hub = true;
+
                 std::string levelPath;
                 if(GoToLevel.empty())
                 {
@@ -1297,6 +1300,7 @@ int GameMain(const CmdLineSetup_t &setup)
                 {
                     levelPath = FileNamePathWorld + GoToLevel;
                     GoToLevel.clear();
+                    is_hub = false;
                 }
 
                 levelPath = s_prepare_episode_path(levelPath);
@@ -1304,7 +1308,13 @@ int GameMain(const CmdLineSetup_t &setup)
                 if(!OpenLevel(levelPath))
                 {
                     ReportLoadFailure(levelPath);
-                    ErrorQuit = true;
+
+                    if(is_hub)
+                    {
+                        LevelSelect = true;
+                        ErrorQuit = true;
+                        GoToLevelNoGameThing = true;
+                    }
                 }
 
                 if(!GoToLevelNoGameThing)
@@ -1852,14 +1862,22 @@ void NextLevel()
     // do an inter-level delay here if there won't be a GameThing later
     if(!TestLevel && GoToLevel.empty() && !NoMap && FileRecentSubHubLevel.empty())
     {
-        if(XMessage::GetStatus() != XMessage::Status::local)
+        int wait_frames = (g_ShortDelay) ? 16 : 32;
+        while(wait_frames > 0 && GameIsActive)
         {
-            for(int i = 0; i < ((g_ShortDelay) ? 16 : 32); i++)
-                Controls::Update(false);
-        }
-        else if(!g_config.unlimited_framerate)
-            PGE_Delay(500 - (g_ShortDelay * 250));
+            XEvents::doEvents();
 
+            if(canProceedFrame())
+            {
+                computeFrameTime1();
+                Controls::Update(false);
+                wait_frames--;
+                computeFrameTime2();
+            }
+
+            if(!g_config.unlimited_framerate)
+                PGE_Delay(1);
+        }
         g_ShortDelay = false;
     }
 
@@ -2191,7 +2209,8 @@ void UpdateMacro()
             }
         }
 
-        LevelMacroCounter++;
+        if(LevelMacro != LEVELMACRO_FLAG_EXIT || LevelMacroCounter >= 0)
+            LevelMacroCounter++;
 
         if(g_config.EnableInterLevelFade && LevelMacroCounter == 598)
         {
@@ -2216,6 +2235,11 @@ void UpdateMacro()
             // LEVELMACRO_FLAG_EXIT = 8 -> 9
             // LEVELMACRO_ALT_FLAG_EXIT = 9 -> 10 (reserved)
             LevelBeatCode = (LevelBeatCode_t)(LevelMacro + 1);
+
+            // alt flag exit
+            if(LevelMacroWhich && NPC[LevelMacroWhich].GFXSlot)
+                LevelBeatCode = BEATCODE_ALT_FLAG;
+
             LevelMacro = LEVELMACRO_OFF;
             LevelMacroCounter = 0;
             EndLevel = true;

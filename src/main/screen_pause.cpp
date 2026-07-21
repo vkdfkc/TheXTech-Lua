@@ -79,6 +79,7 @@ enum class PauseType
 
 static PauseType s_pause_type = PauseType::Modern;
 static int s_pause_plr = 0;
+static PauseCode s_forced_pausecode = PauseCode::None;
 static int s_longest_width = 0;
 static std::vector<MenuItem> s_items;
 static int s_cheat_menu_bits = 0;
@@ -190,7 +191,7 @@ static bool s_CheatScreen()
 {
     TextEntryScreen::Init(g_gameStrings.pauseItemEnterCode, s_CheatScreen_callback);
 
-    return true;
+    return false;
 }
 
 static bool s_QuitTesting()
@@ -228,14 +229,16 @@ static bool s_SaveAndContinue()
         PlaySound(SFX_VillainKilled);
     }
 
-    return true;
+    SoundPause[SFX_Pause] = 2;
+    s_push_unpause();
+
+    return false;
 }
 
 static bool s_Quit()
 {
 #ifdef THEXTECH_ENABLE_SDL_NET
     XMessage::Disconnect();
-    s_force_exit = true;
 #endif
 
     bool CanSave = (LevelSelect || IsHubLevel) && !Cheater;
@@ -277,6 +280,13 @@ void UnlockCheats()
 
     if(GamePaused == PauseCode::PauseScreen)
         TextEntryScreen::Init(g_gameStrings.pauseItemEnterCode, s_CheatScreen_callback);
+}
+
+void RequestForcedPause(PauseCode code)
+{
+    XMessage::PushMessage({XMessage::Type::shared_controls, 0, 0});
+    XMessage::PushMessage({XMessage::Type::shared_controls, 0, 2});
+    s_forced_pausecode = code;
 }
 
 void Init(int plr, bool LegacyPause)
@@ -357,7 +367,7 @@ void Init(int plr, bool LegacyPause)
 #endif
         if(CanSave)
         {
-            s_items.push_back(MenuItem{g_gameStrings.pauseItemSaveAndContinue, s_SaveAndContinue});
+            s_items.push_back(MenuItem{g_gameStrings.pauseItemSaveAndContinue, s_SaveAndContinue, true});
             s_items.push_back(MenuItem{g_gameStrings.pauseItemSaveAndQuit, s_Quit, true});
         }
         else
@@ -392,6 +402,12 @@ void Init(int plr, bool LegacyPause)
         if(CommonFrame - s_cheat_menu_frame < 60)
             TextEntryScreen::Init(g_gameStrings.pauseItemEnterCode, s_CheatScreen_callback);
     }
+
+    if(s_forced_pausecode != PauseCode::None)
+    {
+        PauseInit(s_forced_pausecode, 0, s_push_unpause);
+        s_forced_pausecode = PauseCode::None;
+    }
 }
 
 void Render()
@@ -422,7 +438,7 @@ void Render()
 
     // display room info above the pause menu
 #ifdef THEXTECH_ENABLE_SDL_NET
-    if(XMessage::GetStatus() == XMessage::Status::connected)
+    if(XMessage::CurrentRoom())
     {
         XRender::renderRect(XRender::TargetW / 2 - menu_box_width / 2 - 4, XRender::TargetH / 2 - menu_box_height / 2 - 40 - 4, menu_box_width + 8, 28 + 8, {0, 0, 0});
         XRender::renderRect(XRender::TargetW / 2 - menu_box_width / 2 - 2, XRender::TargetH / 2 - menu_box_height / 2 - 40 - 2, menu_box_width + 4, 28 + 4, {255, 255, 255});
@@ -687,7 +703,7 @@ void ControlsLogic()
     if(menuControls.Do && MenuCursor >= 0 && MenuCursor < (int)s_items.size())
     {
         if(s_items[MenuCursor].is_private)
-            s_items[MenuCursor].callback();
+            s_force_exit = s_items[MenuCursor].callback();
         else
         {
             XMessage::Message menu_action;
@@ -710,9 +726,6 @@ bool Logic()
 
     if(g_pending_action < s_items.size() && !s_items[g_pending_action].is_private)
         stopPause = s_items[g_pending_action].callback();
-    // SAVE & CONTINUE from host
-    else if(g_pending_action != 255 && s_items.size() > 0)
-        stopPause = s_items[0].callback();
 
     g_pending_action = 255;
 
