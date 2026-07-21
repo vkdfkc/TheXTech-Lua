@@ -736,28 +736,44 @@ PGE_Size FontManager::printText(const char* text, size_t text_size,
                                 XTColor outline_color,
                                 CropInfo* crop_info)
 {
+    pLogDebug("FontManager::printText: ENTER text='%.*s' size=%zu x=%d y=%d font=%d ttfSize=%u outline=%d g_fontManagerIsInit=%d",
+        (int)text_size, text ? text : "(null)", text_size, x, y, font, ttf_FontSize, (int)outline, (int)g_fontManagerIsInit);
+
     if(!g_fontManagerIsInit)
+    {
+        pLogDebug("FontManager::printText: font manager not initialized, return (0,0)");
         return PGE_Size(0, 0);
+    }
 
     if(!text || text_size == 0)
+    {
+        pLogDebug("FontManager::printText: null or empty text, return (0,0)");
         return PGE_Size(0, 0);
+    }
 
     BaseFontEngine* font_engine = nullptr;
 
     if((font >= 0) && (static_cast<size_t>(font) < g_anyFonts.size()) && g_anyFonts[font])
     {
+        pLogDebug("FontManager::printText: g_anyFonts[%d]=%p loaded=%d", font, (void*)g_anyFonts[font], (int)g_anyFonts[font]->isLoaded());
         if(g_anyFonts[font]->isLoaded())
             font_engine = g_anyFonts[font];
+    }
+    else
+    {
+        pLogDebug("FontManager::printText: font %d out of range (g_anyFonts.size=%zu) or null", font, g_anyFonts.size());
     }
 
     if(!font_engine)
     {
+        pLogDebug("FontManager::printText: font_engine not found for font=%d, trying fallbacks", font);
         switch(font)
         {
         case DefaultRaster:
             if(g_defaultRasterFont && g_defaultRasterFont->isLoaded())
             {
                 font_engine = g_defaultRasterFont;
+                pLogDebug("FontManager::printText: using g_defaultRasterFont=%p", (void*)font_engine);
                 break;
             } /*fallthrough*/
         case DefaultTTF_Font:
@@ -766,9 +782,9 @@ PGE_Size FontManager::printText(const char* text, size_t text_size,
             if(g_defaultTtfFont && g_defaultTtfFont->isLoaded())
             {
                 font_engine = g_defaultTtfFont;
-
                 if(ttf_FontSize == 0)
                     ttf_FontSize = 14;
+                pLogDebug("FontManager::printText: using g_defaultTtfFont=%p ttfSize=%u", (void*)font_engine, ttf_FontSize);
             }
 #endif
             break;
@@ -781,8 +797,12 @@ PGE_Size FontManager::printText(const char* text, size_t text_size,
         }
     }
 
+    pLogDebug("FontManager::printText: font_engine=%p, type=%d, fontName='%s'",
+        (void*)font_engine, (int)font_engine->getFontType(), font_engine->getFontName().c_str());
+
     if(outline)
     {
+        pLogDebug("FontManager::printText: drawing outline (4 passes)");
         // take square of Alpha to match blend of normal text
         uint8_t scaled_a = XTColor::mul(color.a, color.a);
         if(crop_info)
@@ -797,7 +817,10 @@ PGE_Size FontManager::printText(const char* text, size_t text_size,
             crop_info->for_outline = false;
     }
 
-    return font_engine->printText(text, text_size, x, y, color, ttf_FontSize, crop_info);
+    pLogDebug("FontManager::printText: calling font_engine->printText (main pass)");
+    PGE_Size ret = font_engine->printText(text, text_size, x, y, color, ttf_FontSize, crop_info);
+    pLogDebug("FontManager::printText: OK, returning size=(%d,%d)", ret.w(), ret.h());
+    return ret;
 }
 
 PGE_Size FontManager::optimizeText(std::string &text, size_t max_columns)

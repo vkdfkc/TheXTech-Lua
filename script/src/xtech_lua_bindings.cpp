@@ -654,20 +654,50 @@ static void setMusic(int sec, int musicId, const std::string &filename)
 namespace LuaHUD
 {
 
-static void showText(const std::string &text, num_t x, num_t y, int font)
+// NOTE: parameters use double (not num_t) because luabind cannot convert
+// Lua numbers to num_t (num_t's double constructor is explicitly deleted).
+static void showText(const std::string &text, double x, double y, int font)
 {
-    Renderer::Get().AddOp(new RenderStringOp(text, font, s_round2int(x), s_round2int(y)));
+    if(text.empty())
+        return;
+    if(font < 1 || font > 5)
+        font = 3;
+
+    int ix = static_cast<int>(x);
+    int iy = static_cast<int>(y);
+    int len = static_cast<int>(text.size());
+    int w = SuperTextPixLen(len, text.c_str(), font);
+    Render::TranslateScreenCoords(ix, iy, w, 18);
+    SuperPrint(len, text.c_str(), font, ix, iy);
 }
 
-static void showLevelName(num_t x, num_t y, int font)
+static void showLevelName(double x, double y, int font)
 {
-    Renderer::Get().AddOp(new RenderStringOp(
-        LevelName.empty() ? FileName : LevelName, font, s_round2int(x), s_round2int(y)));
+    if(font < 1 || font > 5)
+        font = 3;
+    const std::string &name = LevelName.empty() ? FileName : LevelName;
+    if(name.empty())
+        return;
+    int ix = static_cast<int>(x);
+    int iy = static_cast<int>(y);
+    int len = static_cast<int>(name.size());
+    int w = SuperTextPixLen(len, name.c_str(), font);
+    Render::TranslateScreenCoords(ix, iy, w, 18);
+    SuperPrint(len, name.c_str(), font, ix, iy);
 }
 
-static void showLevelFile(num_t x, num_t y, int font)
+static void showLevelFile(double x, double y, int font)
 {
-    Renderer::Get().AddOp(new RenderStringOp(FileName, font, s_round2int(x), s_round2int(y)));
+    if(font < 1 || font > 5)
+        font = 3;
+    if(FileName.empty())
+        return;
+    int ix = static_cast<int>(x);
+    int iy = static_cast<int>(y);
+    int len = static_cast<int>(FileName.size());
+    int w = SuperTextPixLen(len, FileName.c_str(), font);
+    Render::TranslateScreenCoords(ix, iy, w, 18);
+    SuperPrint(len, FileName.c_str(), font, ix, iy);
 }
 
 static void debugPrint(const std::string &text)
@@ -1108,15 +1138,31 @@ static int sysval_getScreenY(int screen)
 static bool sysval_getShowHud() { return ShowOnScreenHUD; }
 static void sysval_setShowHud(bool v) { ShowOnScreenHUD = v; }
 
+static bool sysval_getShowInterface() { return ShowInterface; }
+static void sysval_setShowInterface(bool v) { ShowInterface = v; }
+
 static bool sysval_getBattleMode() { return BattleMode; }
 
 static bool sysval_getEndLevel() { return EndLevel; }
 static void sysval_setEndLevel(bool v) { EndLevel = v; }
 
 static int sysval_getLevelMacro() { return (int)LevelMacro; }
+static void sysval_setLevelMacro(int v) { LevelMacro = (LevelMacro_t)v; }
 static int sysval_getLevelMacroCounter() { return LevelMacroCounter; }
 
+static int sysval_getLevelBeatCode() { return (int)LevelBeatCode; }
+static void sysval_setLevelBeatCode(int v) { LevelBeatCode = (LevelBeatCode_t)v; }
+
 static int sysval_getGameTime() { return (int)CommonFrame; }
+
+static int sysval_getCheckpointCount() { return (int)CheckpointsList.size(); }
+static int sysval_getCheckpointId(int index)
+{
+    // 1-based index matching Lua convention
+    if(index < 1 || size_t(index) > CheckpointsList.size())
+        return 0;
+    return CheckpointsList[size_t(index) - 1].id;
+}
 
 // ============================================================================
 // Async/Delay support (P3: named timers)
@@ -1484,6 +1530,9 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("AnimationPhase", &CSprite::m_AnimationPhase)
             .def_readwrite("AnimationTimer", &CSprite::m_AnimationTimer)
             .def_readwrite("AnimationFrame", &CSprite::m_AnimationFrame)
+            .def("getExtX", &CSprite::GetExtX)
+            .def("getExtY", &CSprite::GetExtY)
+            .def("getFrameCols", &CSprite::GetFrameCols)
             .def("setImage", &CSprite::SetImage)
             .def("setImageResource", &CSprite::SetImageResource)
             .def("makeLimitedLife", &CSprite::MakeLimitedLifetime)
@@ -1554,6 +1603,8 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("Text", &NPC_t::Text)
             .def_readwrite("Layer", &NPC_t::Layer)
             .def_readwrite("AttLayer", &NPC_t::AttLayer)
+            .def_readwrite("extx", &NPC_t::extx)
+            .def_readwrite("exty", &NPC_t::exty)
             // Bitfield members via getter/setter
             .def("getGenerator", &LuaNPCExt::npc_getGenerator)
             .def("setGenerator", &LuaNPCExt::npc_setGenerator)
@@ -1770,6 +1821,8 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("tempBlockNpcType", &Block_t::tempBlockNpcType)
             .def_readwrite("tempBlockVehicleYOffset", &Block_t::tempBlockVehicleYOffset)
             .def_readwrite("tempBlockNpcIdx", &Block_t::tempBlockNpcIdx)
+            .def_readwrite("extx", &Block_t::extx)
+            .def_readwrite("exty", &Block_t::exty)
             .def("getPermID", &LuaBlock::block_getPermID)
             .def("getName", &LuaBlock::block_getName)
             .def("setName", &LuaBlock::block_setName)
@@ -1798,6 +1851,8 @@ void xtech_lua_register_bindings(lua_State *L)
             .def_readwrite("Layer", &Background_t::Layer)
             .def_readwrite("SortPriority", &Background_t::SortPriority)
             .def_readwrite("Location", &Background_t::Location)
+            .def_readwrite("extx", &Background_t::extx)
+            .def_readwrite("exty", &Background_t::exty)
             .def("getPermID", &LuaBGO::bgo_getPermID),
 
         // ================================================================
@@ -2022,12 +2077,19 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_sysval_getScreenY", &LuaMisc::sysval_getScreenY),
         def("xtech_sysval_getShowHud", &LuaMisc::sysval_getShowHud),
         def("xtech_sysval_setShowHud", &LuaMisc::sysval_setShowHud),
+        def("xtech_sysval_getShowInterface", &LuaMisc::sysval_getShowInterface),
+        def("xtech_sysval_setShowInterface", &LuaMisc::sysval_setShowInterface),
         def("xtech_sysval_getBattleMode", &LuaMisc::sysval_getBattleMode),
         def("xtech_sysval_getEndLevel", &LuaMisc::sysval_getEndLevel),
         def("xtech_sysval_setEndLevel", &LuaMisc::sysval_setEndLevel),
         def("xtech_sysval_getLevelMacro", &LuaMisc::sysval_getLevelMacro),
+        def("xtech_sysval_setLevelMacro", &LuaMisc::sysval_setLevelMacro),
         def("xtech_sysval_getLevelMacroCounter", &LuaMisc::sysval_getLevelMacroCounter),
+        def("xtech_sysval_getLevelBeatCode", &LuaMisc::sysval_getLevelBeatCode),
+        def("xtech_sysval_setLevelBeatCode", &LuaMisc::sysval_setLevelBeatCode),
         def("xtech_sysval_getGameTime", &LuaMisc::sysval_getGameTime),
+        def("xtech_sysval_getCheckpointCount", &LuaMisc::sysval_getCheckpointCount),
+        def("xtech_sysval_getCheckpointId", &LuaMisc::sysval_getCheckpointId),
         // P3: Named timer functions
         // xtech_timer_create: registered manually (luabind::object param)
         def("xtech_timer_cancel", &LuaMisc::lua_timer_cancel),
@@ -2120,6 +2182,35 @@ void xtech_lua_register_bindings(lua_State *L)
     LUA_INT_CONST("CONST_BPAT_DRAW", 1);
     LUA_INT_CONST("CONST_BPAT_BIRTH", 2);
     LUA_INT_CONST("CONST_BPAT_DEATH", 3);
+
+    // Level Macro types
+    LUA_INT_CONST("CONST_LEVELMACRO_OFF", 0);
+    LUA_INT_CONST("CONST_LEVELMACRO_CARD_ROULETTE", 1);
+    LUA_INT_CONST("CONST_LEVELMACRO_QUESTION_SPHERE", 2);
+    LUA_INT_CONST("CONST_LEVELMACRO_KEYHOLE", 3);
+    LUA_INT_CONST("CONST_LEVELMACRO_CRYSTAL_BALL", 4);
+    LUA_INT_CONST("CONST_LEVELMACRO_GAME_COMPLETE", 5);
+    LUA_INT_CONST("CONST_LEVELMACRO_STAR", 6);
+    LUA_INT_CONST("CONST_LEVELMACRO_GOAL_TAPE", 7);
+    LUA_INT_CONST("CONST_LEVELMACRO_FLAG", 8);
+
+    // Beat codes (world map exit paths)
+    LUA_INT_CONST("CONST_BEATCODE_NONE", 0);
+    LUA_INT_CONST("CONST_BEATCODE_CARD_ROULETTE", 1);
+    LUA_INT_CONST("CONST_BEATCODE_QUESTION_SPHERE", 2);
+    LUA_INT_CONST("CONST_BEATCODE_OFFSCREEN", 3);
+    LUA_INT_CONST("CONST_BEATCODE_KEYHOLE", 4);
+    LUA_INT_CONST("CONST_BEATCODE_CRYSTAL_BALL", 5);
+    LUA_INT_CONST("CONST_BEATCODE_WARP", 6);
+    LUA_INT_CONST("CONST_BEATCODE_STAR", 7);
+    LUA_INT_CONST("CONST_BEATCODE_GOAL_TAPE", 8);
+    LUA_INT_CONST("CONST_BEATCODE_FLAG", 9);
+    LUA_INT_CONST("CONST_BEATCODE_ALT_FLAG", 10);
+    LUA_INT_CONST("CONST_BEATCODE_RESERVED_1", 11);
+    LUA_INT_CONST("CONST_BEATCODE_RESERVED_2", 12);
+    LUA_INT_CONST("CONST_BEATCODE_RESERVED_3", 13);
+    LUA_INT_CONST("CONST_BEATCODE_RESERVED_4", 14);
+    LUA_INT_CONST("CONST_BEATCODE_GAME_COMPLETE", 15);
 
     LUA_INT_CONST("CONST_COLTYPE_NONE", 0);
     LUA_INT_CONST("CONST_COLTYPE_LEFT", 1);

@@ -253,6 +253,11 @@ Name (只读), SpeedX, SpeedY, Hidden, EffectStop
 Location, Type, Special, Invis, Hidden, Slippy, Kill, RapidHit
 ```
 
+**P5 新增字段:**
+```
+extx, exty       -- 精灵图帧偏移（以 GFX 宽高为单位），渲染时自动应用
+```
+
 **P0 新增字段（对应 TeaScript Block 属性）:**
 ```
 forceSmashable              -- 强制可砸碎标记
@@ -272,6 +277,13 @@ tempBlockNpcIdx             -- 临时方块 NPC 索引
 ```
 
 **名称方法（P4 新增）:** `getName()`, `setName("name")` — 同 NPC。
+
+**帧偏移字段（P5 新增）:**
+```
+extx, exty       -- 精灵图帧偏移（以 GFX 宽高为单位），渲染时自动应用
+```
+
+> `extx` 偏移 `GFXSlot` 的计算结果：`src_x = (GFXSlot + extx) * frameWidth`，`exty` 偏移 `Frame`：`src_y = (Frame + exty) * frameHeight`。默认均为 0。
 
 ### 3.9 Background_t（BGO / 背景对象）✅ P1 新增
 
@@ -343,6 +355,19 @@ Layer           -- 所在图层
 data1, data2, data3, data4, lookup_code, run_time, org_time, data5, expired
 ```
 
+**BasicAnimate 动画参数（`func = SpriteFunc::BasicAnimate`）：**
+
+| 字段 | 用途 | 说明 |
+|---|---|---|
+| `data1` | 单帧高度 | 每个动画帧的高度（像素），=0 时取 1 |
+| `data2` | 帧间隔 | 每帧持续的 tick 数 |
+| `data3` | 单帧宽度 | 每个动画帧的宽度（像素），=0 时使用图像全宽（兼容竖排） |
+
+> **网格模式：** 当 `data3 > 0` 且不等于图像全宽时，将图像按 `(width/data3) × (height/data1)` 的网格切分，
+> 帧序号按从左到右、从上到下排列。`data3=0` 退化为竖排模式（兼容旧行为）。
+
+### 3.13 LunaImage（加载的图片资源）
+
 ### 3.13 LunaImage（加载的图片资源）
 ```
 getWidth(), getHeight(), getUID(), isLoaded()
@@ -361,6 +386,9 @@ Hitbox, AnimationPhase, AnimationTimer, AnimationFrame
 setImage(img), setImageResource(code), makeLimitedLife(frames)
 setCustomVar(name, op, value), customVarExists(name), getCustomVar(name)
 birth(), die()
+getExtX()               -- 当前帧在精灵图网格中的列号（0-based）
+getExtY()               -- 当前帧在精灵图网格中的行号（0-based）
+getFrameCols()          -- 精灵图网格的列数
 ```
 
 ### 3.15 Effect_t（特效）✅ P3 新增
@@ -494,7 +522,7 @@ bgo = xtech_bgo_getByPermID(permId)           -- 通过永久 ID 精确获取 BG
 xtech_bgo_forEach(type, function(bgo)         -- 遍历所有匹配 BGO 执行回调
     bgo.Hidden = true
 end)
--- BGO 字段: Type, Hidden, Layer, SortPriority, Location (SpeedlessLocation)
+-- BGO 字段: Type, Hidden, Layer, SortPriority, Location (SpeedlessLocation), extx, exty
 -- BGO 方法: getPermID() 返回此 BGO 的 1-based 永久 ID
 ```
 
@@ -573,11 +601,24 @@ newSpr = xtech_sprite_copyFromBlueprint(name)        -- 复制蓝图创建新精
 
 ### 4.11 HUD / 渲染
 ```lua
-xtech_hud_showText(text, x, y, font)          -- 在屏幕坐标显示文字
+xtech_hud_showText(text, x, y, font)          -- 在屏幕坐标显示文字（直接渲染，需每帧调用）
 xtech_hud_showLevelName(x, y, font)           -- 显示关卡名
 xtech_hud_showLevelFile(x, y, font)           -- 显示文件名
 xtech_hud_debugPrint(text)                    -- 输出调试信息到日志
 ```
+
+> **注意：** 坐标参数 `x, y` 使用 Lua number（double），内部转为整数。font 取值范围 1-5。
+>
+> **`ShowOnScreenHUD` vs `ShowInterface`：** 前者控制整个 HUD 平面（含 `onRenderHud`），后者仅控制内建游戏界面（生命/金币/分数等）。自定义 HUD 应使用 `setShowInterface(false)` 以保留 `onRenderHud` 回调。
+> ```
+> PLANE_LVL_HUD:
+>   if(ShowOnScreenHUD) {
+>       onRenderHud(Z)       ← 受 ShowOnScreenHUD 控制
+>       if(ShowInterface) {
+>           DrawInterface(Z) ← 受 ShowInterface 控制
+>       }
+>   }
+> ```
 
 ### 4.12 变量系统
 ```lua
@@ -629,14 +670,25 @@ xtech_sysval_setScore(10000)                  -- 设置分数
 x = xtech_sysval_getScreenX(1)                -- 玩家1 屏幕 X 坐标
 y = xtech_sysval_getScreenY(1)                -- 玩家1 屏幕 Y 坐标
 -- 游戏状态
-show = xtech_sysval_getShowHud()              -- 是否显示 HUD
-xtech_sysval_setShowHud(false)                -- 隐藏 HUD
+show = xtech_sysval_getShowHud()              -- 是否显示 HUD 平面
+xtech_sysval_setShowHud(false)                -- 隐藏 HUD 平面（禁用 onRenderHud）
+showIf = xtech_sysval_getShowInterface()      -- 是否显示内建游戏界面
+xtech_sysval_setShowInterface(false)          -- 仅隐藏内建界面（保留 onRenderHud）
 battle = xtech_sysval_getBattleMode()         -- 是否为对战模式
 ending = xtech_sysval_getEndLevel()            -- 是否正在结束关卡
 xtech_sysval_setEndLevel(true)                -- 立即结束关卡
-macro = xtech_sysval_getLevelMacro()          -- 关卡结束宏类型
+macro = xtech_sysval_getLevelMacro()          -- 关卡结束宏类型（只读）
+xtech_sysval_setLevelMacro(v)                 -- 设置关卡结束宏类型（0 可取消硬编码动画）
 counter = xtech_sysval_getLevelMacroCounter() -- 结束宏计数器
 time = xtech_sysval_getGameTime()             -- 游戏运行总帧数
+
+-- 检查点
+ckptCount = xtech_sysval_getCheckpointCount() -- 当前已收集的检查点数量（0=全新开始）
+ckptId = xtech_sysval_getCheckpointId(n)      -- 第 n 个检查点的 ID（1-based，NPC.Special 值）
+
+-- 关卡退出路径
+beatCode = xtech_sysval_getLevelBeatCode()    -- 当前关卡退出路径（决定世界地图解锁）
+xtech_sysval_setLevelBeatCode(v)              -- 设置关卡退出路径（配合 setEndLevel 使用）
 ```
 
 ### 4.17 命名定时器（TCreate/TClear 等价）✅ P3 新增
@@ -726,6 +778,41 @@ xtech_effect_kill(index)                      -- 删除指定特效
 
 所有 [eff_id.h](src/eff_id.h) 中定义的 EFFID 枚举值均已暴露：
 `CONST_EFF_SMOKE_S3_CENTER(-10)` 到 `CONST_EFF_GENERIC_NPC_SQUISH(150)`，覆盖所有特效类型。
+
+### 5.14 LevelMacro（关卡结束宏类型）✅ P5 新增
+| 常量 | 值 | 说明 |
+|---|---|---|
+| `CONST_LEVELMACRO_OFF` | 0 | 无宏（设为 0 可取消硬编码过关动画） |
+| `CONST_LEVELMACRO_CARD_ROULETTE` | 1 | 卡牌轮盘（NPC 11） |
+| `CONST_LEVELMACRO_QUESTION_SPHERE` | 2 | 问号球（NPC 16） |
+| `CONST_LEVELMACRO_KEYHOLE` | 3 | 钥匙孔（NPC 41） |
+| `CONST_LEVELMACRO_CRYSTAL_BALL` | 4 | 水晶球（NPC 41 S2） |
+| `CONST_LEVELMACRO_GAME_COMPLETE` | 5 | 通关（最终 Boss） |
+| `CONST_LEVELMACRO_STAR` | 6 | 星星（NPC 97） |
+| `CONST_LEVELMACRO_GOAL_TAPE` | 7 | 终点带（NPC 197） |
+| `CONST_LEVELMACRO_FLAG` | 8 | 旗杆（NPC 306） |
+
+### 5.15 BeatCode（关卡退出路径）✅ P5 新增
+| 常量 | 值 | 说明 |
+|---|---|---|
+| `CONST_BEATCODE_NONE` | 0 | 无 |
+| `CONST_BEATCODE_CARD_ROULETTE` | 1 | 卡牌轮盘退出 |
+| `CONST_BEATCODE_QUESTION_SPHERE` | 2 | 问号球退出 |
+| `CONST_BEATCODE_OFFSCREEN` | 3 | 屏幕外退出 |
+| `CONST_BEATCODE_KEYHOLE` | 4 | 钥匙孔退出 |
+| `CONST_BEATCODE_CRYSTAL_BALL` | 5 | 水晶球退出 |
+| `CONST_BEATCODE_WARP` | 6 | 传送门退出 |
+| `CONST_BEATCODE_STAR` | 7 | 星星退出 |
+| `CONST_BEATCODE_GOAL_TAPE` | 8 | 终点带退出 |
+| `CONST_BEATCODE_FLAG` | 9 | 旗杆退出 |
+| `CONST_BEATCODE_ALT_FLAG` | 10 | 秘密旗杆退出 |
+| `CONST_BEATCODE_RESERVED_1` | 11 | 脚本专用，自定义退出路径 1 |
+| `CONST_BEATCODE_RESERVED_2` | 12 | 脚本专用，自定义退出路径 2 |
+| `CONST_BEATCODE_RESERVED_3` | 13 | 脚本专用，自定义退出路径 3 |
+| `CONST_BEATCODE_RESERVED_4` | 14 | 脚本专用，自定义退出路径 4 |
+| `CONST_BEATCODE_GAME_COMPLETE` | 15 | 游戏通关（标记存档完成） |
+
+> **注意：** `LevelMacro` 和 `LevelBeatCode` 是两个独立的枚举系统，数值并不对应。例如旗杆退出时 `LevelMacro=8` 但 `BeatCode=9`。设置时应使用对应的常量。
 
 ---
 
@@ -1012,14 +1099,18 @@ end
 | 自定义变量槽 (Ivala/b/c) | ⬜ 部分 | 可用 Special2/3/4 字段代替 |
 | Layer 操作 | ✅ 已覆盖 | Layer 类绑定 + xtech_layer_* 函数 |
 | 音频 (AudioSet) | ✅ 已覆盖 | xtech_audio_* 函数 |
-| HUD 文字 | ✅ 已覆盖 | xtech_hud_* 函数 |
+| HUD 文字 | ✅ 已覆盖 | xtech_hud_* 函数（直接渲染，无池泄漏） |
+| ShowInterface | ✅ P5 新增 | `xtech_sysval_get/setShowInterface` — 仅隐藏内建界面 |
+| 检查点查询 | ✅ P5 新增 | `xtech_sysval_getCheckpointCount/Id` |
+| 过关宏控制 | ✅ P5 新增 | `xtech_sysval_setLevelMacro` + `setLevelBeatCode` |
+| 过关路径常量 | ✅ P5 新增 | 9 个 `CONST_LEVELMACRO_*` + 14 个 `CONST_BEATCODE_*` |
 | 事件系统 | ✅ 已覆盖 | xtech_event_* 函数 |
 | 延迟/定时 | ✅ 已覆盖 | xtech_misc_wait（异步回调式） |
 | 精灵/位图 | ✅ 已覆盖 | xtech_sprite_* 函数 |
 | NPC 创建 (NCreate) | ✅ P3 新增 | `xtech_npc_create(type, x, y, xspd, yspd)` |
 | NPC 删除 (NKill) | ✅ 已覆盖 | xtech_npc_kill |
 | 特效创建 (FXCreate) | ✅ P3 新增 | `xtech_effect_create()` + Effect_t 类绑定 |
-| Sysval 系统 | ✅ P3 新增 | `xtech_sysval_get*/set*` 系列函数 |
+| Sysval 系统 | ✅ 已扩展 | `xtech_sysval_get*/set*` 系列函数（含 P5 新增的检查点/过关宏/BeatCode） |
 | 命名定时器 (TCreate/TClear) | ✅ P3 新增 | `xtech_timer_create/cancel/clearAll` |
 | 延迟执行 (Sleep) | ✅ 已覆盖 | `xtech_misc_wait(callback, frames)` |
 | 脚本互调 (EXEScript) | ⬜ 未实现 | 可用 Lua dofile/require 替代 |
@@ -1061,9 +1152,18 @@ end
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `script/include/xtech_lua_main.h` | 编辑 | 新增 8 个 API 声明 |
-| `script/src/xtech_lua_main.cpp` | 重写 | 完整 Lua 生命周期 + 延迟调用集成（~270行）|
+| `script/src/xtech_lua_main.cpp` | 编辑 | 完整 Lua 生命周期 + 延迟调用 + 独立渲染管理 |
 | `script/src/xtech_lua_bindings.h` | 编辑 | 新增 process/clear 函数声明 |
-| `script/src/xtech_lua_bindings.cpp` | 重写 | 全部绑定 + P0+P1+P2+P3 扩展（~2535行）|
+| `script/src/xtech_lua_bindings.cpp` | 编辑 | 全部绑定 + P0+P1+P2+P3+P5 扩展（~2600行）|
+| `script/src/xtech_lua_main.cpp` | 编辑 | 新增 XTech Lua 独立渲染生命周期管理 |
+| `script/src/xtech_lua_events.cpp` | 新增 | 系统事件钩子系统 |
+| `src/script/luna/luna.cpp` | 编辑 | `lunaRenderEnd` 添加池回收（ClearQueue） |
+| `src/script/luna/renderop_string.cpp` | 编辑 | `Draw` 添加字体有效性防御检查 |
+| `src/graphics/gfx_print.cpp` | 编辑 | `SuperPrint`/`SuperTextPixLen` 添加调试日志 |
+| `src/fontman/font_manager.cpp` | 编辑 | `printText` 添加调试日志 |
+| `src/globals.h` | 编辑 | 新增 `ShowInterface` 全局变量 |
+| `src/globals.cpp` | 编辑 | `ShowInterface` 初始化 |
+| `src/graphics/gfx_update.cpp` | 编辑 | `DrawInterface` 受 `ShowInterface` 控制 |
 | `script/CMakeLists.txt` | 编辑 | 添加 `xtech_lua_bindings.cpp` |
 | `src/config.h` | 编辑 | 新增 `lua_enable_engine` 配置项 |
 | `src/game_main.cpp` | 编辑 | 9处 Lua 钩子 |
@@ -1072,7 +1172,7 @@ end
 | `src/main/outro_loop.cpp` | 编辑 | `xtech_lua_loop()` 钩子 |
 | `src/graphics/gfx_update.cpp` | 编辑 | 4处渲染钩子 |
 
-**总计：** ~2535 行新代码/修改，分布在 11 个文件中。新增 122 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量。
+**总计：** ~2535 行新代码/修改，分布在 11 个文件中。新增 129 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量、9 个 LEVELMACRO 常量、14 个 BEATCODE 常量。
 
 ---
 
@@ -1329,8 +1429,8 @@ end
 
 ```lua
 function onLoad()
-    -- 加载自定义图片
-    xtech_sprite_loadImage("my_sprite.png", 1000, 0xFF00DC)
+    -- 加载自定义图片（128×128 的 4×4 网格精灵图，每帧 32×32）
+    xtech_sprite_loadImage("my_sprite_sheet.png", 1000, 0xFF00DC)
 
     -- 放置一个静态 HUD 精灵
     local spr = xtech_sprite_place(CONST_SPRITE_STATIC, 1000, 400, 300, 0)
@@ -1340,6 +1440,109 @@ function onLoad()
     end
 end
 ```
+
+### 网格精灵图动画示例 ✅ P5 新增
+
+```lua
+-- 加载 256×64 精灵图，data1=32(帧高), data2=8(帧间隔), data3=64(帧宽)
+-- 自动切分为 4列×2行 = 8帧
+function onLoad()
+    xtech_sprite_loadImage("player_walk.png", 2000, 0xFF00DC)
+
+    local spr = xtech_sprite_place(CONST_SPRITE_NORMAL, 2000, 400, 300, 0)
+    if spr then
+        -- 添加 BasicAnimate 组件: data1=帧高, data2=帧间隔, data3=帧宽
+        spr:setCustomVar("_BasicAnimate_data1", 32)
+        spr:setCustomVar("_BasicAnimate_data2", 8)
+        spr:setCustomVar("_BasicAnimate_data3", 64)  -- 0=竖排(兼容), >0=网格
+    end
+end
+
+-- 根据 extx/exty 实现不同逻辑
+function onLoop()
+    -- 遍历所有精灵...
+    local cols = spr:getFrameCols()   -- 4
+    local col  = spr:getExtX()        -- 当前列 (0-3)
+    local row  = spr:getExtY()        -- 当前行 (0-1)
+
+    if col == 0 and row == 0 then
+        -- 第1列第1行: 站立帧，执行特殊逻辑
+    elseif col == 1 then
+        -- 第2列: 走路帧
+    end
+end
+```
+
+### extx/exty 帧偏移示例 ✅ P5 新增
+
+```lua
+-- 更改 NPC 精灵图中的显示帧
+-- 假设 npc-{id}.txt 中 gfxwidth=32, gfxheight=32
+-- 精灵图是 128×64，包含 4列×2行 = 8个帧组
+function onLoad()
+    -- 遍历所有 Goomba，让每个显示不同帧组
+    xtech_npc_forEach(CONST_NPC_FODDER_S3, 0, function(npc)
+        npc.extx = 2   -- 偏移到第 3 列（跳过默认的 idle 帧组）
+        npc.exty = 1   -- 偏移到第 2 行（选择 walk 帧组）
+    end)
+end
+```
+
+> **编辑器工作流：** 关卡编辑器中为每个 NPC 实例选择 extx/exty，存入 `.lvlx` 文件。
+> 运行时引擎自动在 `src_x = (GFXSlot + extx) * frameWidth`、`src_y = (Frame + exty) * frameHeight` 中应用偏移。
+> Lua 可在运行时读写 `npc.extx`/`npc.exty` 来动态切换帧组。
+
+### 自定义过关动画示例 ✅ P5 新增
+
+```lua
+-- 拦截旗杆过关动画，用 Lua 自定义
+local customEnding = false
+local endingPhase   = 0
+local endingTimer   = 0
+
+function onLevelComplete()
+    -- 仅在旗杆过关时拦截
+    if xtech_sysval_getLevelMacro() == CONST_LEVELMACRO_FLAG then
+        -- 杀死系统硬编码动画
+        xtech_sysval_setLevelMacro(CONST_LEVELMACRO_OFF)
+
+        customEnding = true
+        endingPhase  = 1
+        endingTimer  = 0
+    end
+end
+
+function onLoop()
+    if not customEnding then return end
+
+    local p = xtech_player_get(1)
+    if not p then return end
+
+    endingTimer = endingTimer + 1
+
+    if endingPhase == 1 then
+        -- 阶段1：玩家下落（60帧）
+        p.Location.SpeedX = 0
+        p.Location.SpeedY = 3
+        if endingTimer > 60 then
+            endingPhase = 2
+            endingTimer = 0
+        end
+    elseif endingPhase == 2 then
+        -- 阶段2：向右走（120帧）
+        p.Location.SpeedX = 2
+        p.Direction = 1
+        if endingTimer > 120 then
+            -- 动画结束，退出关卡
+            xtech_sysval_setLevelBeatCode(CONST_BEATCODE_FLAG)
+            xtech_sysval_setEndLevel(true)
+            customEnding = false
+        end
+    end
+end
+```
+
+> **流程：** `onLevelComplete` 触发 → `setLevelMacro(0)` 杀死硬编码动画 → Lua 控制玩家 → 结束时设 `LevelBeatCode` + `EndLevel = true`。
 
 ### 异步延迟示例
 

@@ -42,6 +42,7 @@ uint32_t CommonFrame_NotFrozen = 0;
 bool ScrollRelease = false;
 bool TakeScreen = false;
 bool ShowOnScreenHUD = true;
+bool ShowInterface = true;
 std::string LB;
 std::string EoT;
 

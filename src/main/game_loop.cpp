@@ -263,6 +263,11 @@ resume_IntroEvents:
 #endif
         UpdateMacro();
 
+#ifdef ENABLE_XTECH_LUA
+        if(LevelMacro == LEVELMACRO_OFF)
+            xtech_lua_event_postMacro();
+#endif
+
         // was previously a nested frameloop, now that logic is still done in UpdateMacro,
         // but per-frame -> we need to skip the rest of the frame if it didn't finish
         if(LevelMacro == LEVELMACRO_KEYHOLE_EXIT)

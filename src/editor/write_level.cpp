@@ -184,6 +184,8 @@ void SaveLevel(const std::string& FilePath, int format, int version)   // saves 
         block.event_hit = GetE(b.TriggerHit);
         block.event_emptylayer = GetE(b.TriggerLast);
         block.name = GetS(b.Name);
+        block.extx = b.extx;
+        block.exty = b.exty;
 
         // NEW: legacy behavior for spin block
         if(b.Type == 90)
@@ -205,6 +207,8 @@ void SaveLevel(const std::string& FilePath, int format, int version)   // saves 
 
         bgo.z_mode = b.GetCustomLayer();
         bgo.z_offset = b.GetCustomOffset();
+        bgo.extx = b.extx;
+        bgo.exty = b.exty;
         // bgo.smbx64_sp = bgo.z_mode == LevelBGO::ZDefault ? b.SortPriority : -1;
 
         // fix this to update as needed
@@ -281,6 +285,8 @@ void SaveLevel(const std::string& FilePath, int format, int version)   // saves 
         npc.is_boss = n.Legacy;
         npc.wings_type = (int)n.DefaultWings;
         npc.gfx_dx = n.GFXSlot;
+        npc.extx = n.extx;
+        npc.exty = n.exty;
 
         npc.layer = GetL(n.Layer);
 

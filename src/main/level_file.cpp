@@ -840,6 +840,8 @@ bool OpenLevel_Block(void* userdata, LevelBlock& b)
         block.Invis = b.invisible;
         block.Slippy = b.slippery;
         block.Layer = load.FindLayer(b.layer);
+        block.extx = (vbint_t)b.extx;
+        block.exty = (vbint_t)b.exty;
         block.TriggerDeath = load.FindEvent(b.event_destroy);
         block.TriggerHit = load.FindEvent(b.event_hit);
         block.TriggerLast = load.FindEvent(b.event_emptylayer);
@@ -895,6 +897,8 @@ bool OpenLevel_Background(void* userdata, LevelBGO& b)
         }
 
         bgo.Layer = load.FindLayer(b.layer);
+        bgo.extx = (vbint_t)b.extx;
+        bgo.exty = (vbint_t)b.exty;
         bgo.Location.Width = GFXBackground[bgo.Type].w;
         bgo.Location.Height = BackgroundHeight[bgo.Type];
 
@@ -1012,6 +1016,8 @@ bool OpenLevel_NPC(void* userdata, LevelNPC& n)
 
         // NEW: GFX expansion
         npc.GFXSlot = (uint8_t)n.gfx_dx;
+        npc.extx = (vbint_t)n.extx;
+        npc.exty = (vbint_t)n.exty;
 
         npc.Generator = n.generator;
         if(npc.Generator)

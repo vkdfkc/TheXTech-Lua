@@ -22,6 +22,8 @@
 
 #include "sdl_proxy/sdl_stdinc.h"
 #include "core/render.h"
+#include "fontman/font_manager.h"
+#include <Logger/logger.h>
 
 RenderStringOp::RenderStringOp() :
     RenderStringOp(std::string(), 1, 400, 400)
@@ -60,7 +62,9 @@ RenderStringOp::~RenderStringOp()
 
 void RenderStringOp::Draw(Renderer *renderer)
 {
-    //        VB6StrPtr text(m_String);
+    if(!m_String || m_StringSize == 0)
+        return;
+
     int x = m_X, y = m_Y;
 
     if(sceneCoords)
@@ -72,6 +76,18 @@ void RenderStringOp::Draw(Renderer *renderer)
     {
         int w = SuperTextPixLen(m_StringSize, m_String, m_FontType);
         Render::TranslateScreenCoords(x, y, w, 18);
+    }
+
+    // Verify font is valid before drawing
+    int dFont = FontManager::fontIdFromSmbxFont(m_FontType);
+    if(dFont < 0 && m_FontType == 5)
+    {
+        dFont = FontManager::fontIdFromSmbxFont(4);
+    }
+    if(dFont < 0)
+    {
+        pLogWarning("RenderStringOp::Draw: Invalid font %d, skipping text [%s]", m_FontType, m_String);
+        return;
     }
 
     SuperPrint(m_StringSize, m_String, m_FontType, x, y);

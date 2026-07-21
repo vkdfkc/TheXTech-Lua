@@ -31,17 +31,23 @@
 
 int SuperTextPixLen(int SuperN, const char* SuperChars, int Font)
 {
+    pLogDebug("SuperTextPixLen: ENTER N=%d chars='%.*s' Font=%d", SuperN, SuperN, SuperChars, Font);
+
     int dFont = FontManager::fontIdFromSmbxFont(Font);
+    pLogDebug("SuperTextPixLen: fontIdFromSmbxFont(%d) = %d", Font, dFont);
+
     if(dFont < 0 && Font == 5)
     {
         Font = 4;
+        pLogDebug("SuperTextPixLen: Font=5 fallback to 4");
         dFont = FontManager::fontIdFromSmbxFont(Font);
+        pLogDebug("SuperTextPixLen: fontIdFromSmbxFont(4) = %d", dFont);
     }
 
     if(dFont < 0)
     {
         int len = 0;
-        pLogWarning("SuperTextPixLen: Invalid font %d is specified", Font);
+        pLogDebug("SuperTextPixLen: Invalid font %d is specified", Font);
 
         for(int i = 0; i < SuperN; ++i)
         {
@@ -49,10 +55,14 @@ int SuperTextPixLen(int SuperN, const char* SuperChars, int Font)
             i += static_cast<size_t>(trailingBytesForUTF8[static_cast<UTF8>(SuperChars[i])]);
         }
 
+        pLogDebug("SuperTextPixLen: returning fallback len=%d", len);
         return len;
     }
 
-    return FontManager::textSize(SuperChars, SuperN, dFont, FontManager::fontSizeFromSmbxFont(Font)).w();
+    uint32_t fontSize = FontManager::fontSizeFromSmbxFont(Font);
+    int w = FontManager::textSize(SuperChars, SuperN, dFont, fontSize).w();
+    pLogDebug("SuperTextPixLen: textSize returned w=%d, RETURN", w);
+    return w;
 }
 
 void SuperPrintRightAlign(int SuperN, const char* SuperChars, int Font, int X, int Y, XTColor color)
@@ -135,22 +145,31 @@ void SuperPrint(int SuperN, const char* SuperChars, int Font, int X, int Y,
 {
     bool outline = false;
 
+    pLogDebug("SuperPrint: ENTER N=%d chars='%.*s' Font=%d X=%d Y=%d", SuperN, SuperN, SuperChars, Font, X, Y);
+
     int dFont = FontManager::fontIdFromSmbxFont(Font);
+    pLogDebug("SuperPrint: fontIdFromSmbxFont(%d) = %d", Font, dFont);
+
     if(dFont < 0 && Font == 5)
     {
         Font = 4;
         outline = true;
-
+        pLogDebug("SuperPrint: Font=5 fallback to 4");
         dFont = FontManager::fontIdFromSmbxFont(Font);
+        pLogDebug("SuperPrint: fontIdFromSmbxFont(4) = %d", dFont);
     }
 
     if(dFont < 0)
     {
-        pLogWarning("SuperPrint: Invalid font %d is specified", Font);
+        pLogDebug("SuperPrint: Invalid font %d is specified", Font);
         return; // Invalid font specified
     }
 
-    FontManager::printText(SuperChars, SuperN, X, Y, dFont, color, FontManager::fontSizeFromSmbxFont(Font), outline);
+    uint32_t fontSize = FontManager::fontSizeFromSmbxFont(Font);
+    pLogDebug("SuperPrint: fontSize=%u, calling printText('%s', N=%d, x=%d, y=%d, dFont=%d, outline=%d)",
+        fontSize, SuperChars, SuperN, X, Y, dFont, (int)outline);
+    FontManager::printText(SuperChars, SuperN, X, Y, dFont, color, fontSize, outline);
+    pLogDebug("SuperPrint: printText OK, RETURN");
 }
 
 // const char* versions

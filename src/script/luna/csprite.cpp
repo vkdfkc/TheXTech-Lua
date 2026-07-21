@@ -58,6 +58,7 @@ void CSprite::Init()
     m_AnimationPhase = 0;
     m_AnimationFrame = 0;
     m_AnimationTimer = 0;
+    m_FrameCols = 1;
     m_Hitbox.pParent = this;
 }
 

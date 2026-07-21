@@ -236,6 +236,11 @@ void xtech_lua_event_levelComplete()
     s_safeCall("onLevelComplete");
 }
 
+void xtech_lua_event_postMacro()
+{
+    s_safeCall("onPostMacro");
+}
+
 void xtech_lua_event_levelExit()
 {
     s_safeCall("onLevelExit");

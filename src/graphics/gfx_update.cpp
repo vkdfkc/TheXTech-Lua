@@ -648,7 +648,7 @@ void DrawNPC(num_t camX, num_t camY, int A)
     int w = s_round2int(NPC[A].Location.Width);
     int h = s_round2int(NPC[A].Location.Height);
 
-    int src_x = NPC[A].GFXSlot * ((NPC[A]->WidthGFX != 0) ? NPC[A]->WidthGFX : NPC[A]->TWidth);
+    int src_x = (NPC[A].GFXSlot + NPC[A].extx) * ((NPC[A]->WidthGFX != 0) ? NPC[A]->WidthGFX : NPC[A]->TWidth);
     if(src_x >= GFXNPCBMP[NPC[A].Type].w)
         src_x = 0;
 
@@ -760,14 +760,14 @@ void DrawNPC(num_t camX, num_t camY, int A)
         {
             XRender::renderTextureBasic(sX + (NPC[A]->FrameOffsetX * -NPC[A].Direction) - NPC[A]->WidthGFX / 2 + w / 2, drawY, NPC[A]->WidthGFX, h,
                 GFXNPC[NPC[A].Type],
-                src_x, NPC[A].Frame * NPC[A]->HeightGFX,
+                src_x, (NPC[A].Frame + NPC[A].exty * NPC[A]->TFrames) * NPC[A]->HeightGFX,
                 cn);
         }
         else
         {
             XRender::renderTextureBasic(drawX, drawY, w, h,
                 GFXNPC[NPC[A].Type],
-                src_x, NPC[A].Frame * NPC[A]->THeight,
+                src_x, (NPC[A].Frame + NPC[A].exty * NPC[A]->TFrames) * NPC[A]->THeight,
                 cn);
         }
     }
@@ -806,7 +806,7 @@ void DrawNPC(num_t camX, num_t camY, int A)
             // note: using NPC[A]->FrameOffsetX here doesn't really make sense, but it's the SMBX 1.3 logic
             XRender::renderTextureBasic(contents_sX + NPC[A]->FrameOffsetX, contents_sY, contents_w, contents_h,
                 GFXNPC[NPC[A].Special],
-                NPC[A].GFXSlot * contents_w, contents_frame * contents_h,
+                (NPC[A].GFXSlot + NPC[A].extx) * contents_w, (contents_frame + NPC[A].exty) * contents_h,
                 cn);
 
             if(NPC[A].DefaultWings)
@@ -825,7 +825,7 @@ void DrawNPC(num_t camX, num_t camY, int A)
             NPC[A]->HeightGFX,
             GFXNPC[NPC[A].Type],
             src_x,
-            NPC[A].Frame * NPC[A]->HeightGFX,
+            (NPC[A].Frame + NPC[A].exty * NPC[A]->TFrames) * NPC[A]->HeightGFX,
             cn);
     }
 
@@ -3028,7 +3028,8 @@ void UpdateGraphicsScreen(Screen_t& screen)
 #endif
 
                 // this is LunaScript's way of disabling the original SMBX HUD, so it shouldn't affect the Luna HUD
-                if(!gSMBXHUDSettings.skip)
+                // ShowInterface allows Lua scripts to hide only the built-in interface while keeping onRenderHud active
+                if(!gSMBXHUDSettings.skip && ShowInterface)
                    DrawInterface(Z, numScreens);
             }
 

@@ -157,6 +157,8 @@ extern bool ScrollRelease;
 extern bool TakeScreen;
 // EXTRA: Show any on-screen meta (HUD, debug prints, etc.)
 extern bool ShowOnScreenHUD;
+// EXTRA: Show the built-in game interface (lives/coins/score/etc.); when false, onRenderHud still fires
+extern bool ShowInterface;
 //Public LB As String  ' Line Break
 //extern std::string LB;
 //Public EoT As String  ' End of Transmission for WINSOCK
@@ -551,6 +553,11 @@ struct NPC_t
     void ResetLocation();
     const NPCTraits_t* operator->() const;
 
+    //! Frame X offset in sprite sheet (in GFX-width units)
+    vbint_t extx = 0;
+    //! Frame Y offset in sprite sheet (in GFX-height units)
+    vbint_t exty = 0;
+
     NPC_t() : TurnAround(false), TurnBackWipe(false),
         Generator(false), GeneratorActive(false),
         playerTemp(false), Legacy(false), Chat(false), NoLavaSplash(false),
@@ -561,7 +568,8 @@ struct NPC_t
         tempBlockInTree(false),
         Stuck(false),
         Shadow(false),
-        Quicksand(0) {}
+        Quicksand(0),
+        extx(0), exty(0) {}
 
 };
 
@@ -883,6 +891,11 @@ struct Background_t
     //! updates SortPriority based on current type, custom layer, and custom offset
     void UpdateSortPriority();
 
+    //! Frame X offset in sprite sheet (in GFX-width units)
+    vbint_t extx = 0;
+    //! Frame Y offset in sprite sheet (in GFX-height units)
+    vbint_t exty = 0;
+
 //End Type
 };
 
@@ -962,6 +975,11 @@ struct Block_t
     // bool noProjClipping = false;
 //    IsReally As Integer 'the NPC that is this block
     vbint_t tempBlockNpcIdx = 0;
+
+    //! Frame X offset in sprite sheet (in GFX-width units)
+    vbint_t extx = 0;
+    //! Frame Y offset in sprite sheet (in GFX-height units)
+    vbint_t exty = 0;
 
     inline bool tempBlockNoProjClipping() const;
 

@@ -28,6 +28,8 @@ extern "C"
 }
 
 #include <luabind/luabind.hpp>
+
+#include "script/luna/lunarender.h"
 #include <luabind/function.hpp>
 #include <luabind/object.hpp>
 
@@ -334,6 +336,9 @@ void xtech_lua_reset()
 
 void xtech_lua_renderStart()
 {
+    // Start the render frame if LunaLua is not managing it
+    if(!g_config.luna_enable_engine)
+        Renderer::Get().StartFrameRender();
     safeCallLuaFunc(g_luaFunc_onRenderStart, "onRenderStart");
 }
 
@@ -341,6 +346,12 @@ void xtech_lua_renderStart()
 void xtech_lua_renderEnd()
 {
     safeCallLuaFunc(g_luaFunc_onRenderEnd, "onRenderEnd");
+    // End the render frame and clean up render ops if LunaLua is not managing it
+    if(!g_config.luna_enable_engine)
+    {
+        Renderer::Get().EndFrameRender();
+        Renderer::Get().ClearQueue();
+    }
 }
 
 

@@ -59,6 +59,7 @@ void xtech_lua_event_blockDestroy(int blockId, int blockType, int destroyerId);
 // --- Level / Game Events ---
 
 void xtech_lua_event_levelComplete();
+void xtech_lua_event_postMacro();
 void xtech_lua_event_levelExit();
 void xtech_lua_event_gameOver();
 void xtech_lua_event_pause();

@@ -603,26 +603,39 @@ void SpriteFunc::SpriteTimer(CSprite *me, SpriteComponent *obj)
 // BASIC ANIMATE
 void SpriteFunc::BasicAnimate(CSprite *me, SpriteComponent *obj)
 {
-    int anim_height = (int)obj->data1;
+    int anim_height = (int)obj->data1;  // Height of each frame
+    int anim_width  = (int)obj->data3;  // Width of each frame (0 = use full image width)
     if(anim_height == 0)
         anim_height = 1;
-    int implicit_frames = (int)me->m_Ht / anim_height;
+    if(anim_width == 0)
+        anim_width = (int)me->m_Wd;
+
+    int cols = (int)me->m_Wd / anim_width;
+    int rows = (int)me->m_Ht / anim_height;
+    int implicit_frames = rows * cols;
+    if(implicit_frames <= 0)
+        implicit_frames = 1;
 
     // Init animation state if necessary
     if(!me->m_AnimationSet)
     {
         me->m_Hitbox.H = static_cast<short>(anim_height);
+        me->m_Hitbox.W = static_cast<short>(anim_width);
         me->m_AnimationFrame = 0;
         me->m_AnimationPhase = (int)obj->data2;
         me->m_AnimationTimer = (int)obj->data2;
+        me->m_FrameCols = cols;             // store for Lua extx/exty
+
         me->m_GfxRects.clear();
         for(int i = 0; i < implicit_frames; i++)
         {
+            int col = i % cols;
+            int row = i / cols;
             LunaRect temp;
-            temp.left = 0;
-            temp.right = (int)me->m_Wd;
-            temp.top = (int)anim_height * i;
-            temp.bottom = (int)anim_height; // <this is a HEIGHT argument
+            temp.left   = col * anim_width;
+            temp.right  = anim_width;
+            temp.top    = row * anim_height;
+            temp.bottom = anim_height;
             me->m_GfxRects.push_back(temp);
         }
         me->m_AnimationSet = true;

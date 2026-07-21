@@ -122,8 +122,17 @@ public:
     int m_AnimationTimer;
     //! The current frame in m_GfxRects to be drawn (0 == first frame)
     int m_AnimationFrame;
+    //! Number of columns in the sprite sheet grid (1 = vertical strip)
+    int m_FrameCols = 1;
     //! Spritesheet areas to draw, indexed by animation frame
     std::vector<LunaRect> m_GfxRects;
+
+    //! Get current frame's column index in the sprite sheet grid (0-based)
+    int GetExtX() const { return (m_FrameCols > 0) ? m_AnimationFrame % m_FrameCols : 0; }
+    //! Get current frame's row index in the sprite sheet grid (0-based)
+    int GetExtY() const { return (m_FrameCols > 0) ? m_AnimationFrame / m_FrameCols : 0; }
+    //! Get number of columns in the sprite sheet grid
+    int GetFrameCols() const { return m_FrameCols; }
 
     std::list<SpriteComponent> m_BirthComponents;
     //! Currently loaded behavioral components

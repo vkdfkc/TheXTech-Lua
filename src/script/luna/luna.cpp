@@ -167,5 +167,8 @@ void lunaRenderStart()
 void lunaRenderEnd()
 {
     if(!LevelEditor && g_config.luna_enable_engine && lunaAllowed())
+    {
         Renderer::Get().EndFrameRender();
+        Renderer::Get().ClearQueue();
+    }
 }
