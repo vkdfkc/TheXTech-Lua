@@ -1,6 +1,6 @@
 # LuaJIT 全量化游戏脚本接入 — 实施报告
 
-**日期：** 2026-06-06（更新）
+**日期：** 2026-07-22（更新）
 **项目：** TheXTech
 **参考文档：** SMBx_Scripting_Help_1.4.5.rtf（TeaScript API）
 
@@ -28,7 +28,7 @@
 | `xtech_lua_renderStart()` | 调用 Lua `onRenderStart()` |
 | `xtech_lua_renderEnd()` | 调用 Lua `onRenderEnd()` |
 | `xtech_lua_render(screenZ)` | 调用 Lua `onRender(screenZ)` |
-| `xtech_lua_renderHud(screenZ)` | 调用 Lua `onRenderHud(screenZ)` |
+| `xtech_lua_renderHud(screenZ, numScreens)` | 调用 Lua `onRenderHud(screenZ)` |
 | `xtech_lua_quit()` | 调用 `onLoopEnd()`，关闭 Lua VM |
 
 **脚本加载顺序：**
@@ -44,7 +44,7 @@ function onLoopEnd()        -- 关卡结束时调用一次
 function onRenderStart()    -- 每帧渲染前
 function onRenderEnd()      -- 每帧渲染后
 function onRender(Z)        -- 每层渲染（Z=屏幕层号）
-function onRenderHud(Z)     -- HUD 渲染
+function onRenderHud(Z, numScreens)     -- HUD 渲染
 end
 ```
 
@@ -293,6 +293,7 @@ Hidden      -- TeaScript: 隐藏标记
 Layer       -- 所在图层索引
 SortPriority -- 排序优先级
 Location    -- TeaScript: X, Y, Width, Height（SpeedlessLocation_t）
+extx, exty  -- P5: 精灵图帧偏移（以 GFX 宽高为单位），渲染时自动应用
 ```
 
 **TeaScript BGO 属性映射:**
@@ -604,8 +605,22 @@ newSpr = xtech_sprite_copyFromBlueprint(name)        -- 复制蓝图创建新精
 xtech_hud_showText(text, x, y, font)          -- 在屏幕坐标显示文字（直接渲染，需每帧调用）
 xtech_hud_showLevelName(x, y, font)           -- 显示关卡名
 xtech_hud_showLevelFile(x, y, font)           -- 显示文件名
+xtech_hud_showImage(imgCode, x, y, sx, sy, sw, sh)  -- 在 HUD 平面绘制图像（屏幕固定，支持裁切）
 xtech_hud_debugPrint(text)                    -- 输出调试信息到日志
 ```
+
+> **`xtech_hud_showImage`：** 直接将图像绘制到 HUD 平面，不随镜头移动。比 `xtech_sprite_place(type=1)` 更轻量，无需 sprite 管线：
+> ```lua
+> local img = xtech_sprite_loadImage("hud.png")
+> -- 完整绘制
+> xtech_hud_showImage(img, 10, 10)
+> -- 裁切绘制：从 (0,32) 取 32×16 区域画到 (200,100)
+> xtech_hud_showImage(img, 200, 100, 0, 32, 32, 16)
+> -- sw=0 / sh=0 自动取图像完整尺寸
+> xtech_hud_showImage(img, 400, 300, 64, 0, 0, 0)
+> ```
+>
+> 注意内部使用 `RenderBitmapOp`（pool 分配，单帧生命周期），坐标经过 `TranslateScreenCoords` 做跨分辨率适配，与 `StaticDraw` 共享相同的渲染管线。
 
 > **注意：** 坐标参数 `x, y` 使用 Lua number（double），内部转为整数。font 取值范围 1-5。
 >
@@ -613,7 +628,7 @@ xtech_hud_debugPrint(text)                    -- 输出调试信息到日志
 > ```
 > PLANE_LVL_HUD:
 >   if(ShowOnScreenHUD) {
->       onRenderHud(Z)       ← 受 ShowOnScreenHUD 控制
+>       onRenderHud(Z, numScreens)       ← 受 ShowOnScreenHUD 控制
 >       if(ShowInterface) {
 >           DrawInterface(Z) ← 受 ShowInterface 控制
 >       }
@@ -667,8 +682,12 @@ xtech_sysval_setCoins(50)                     -- 设置金币数
 score = xtech_sysval_getScore()               -- 当前分数
 xtech_sysval_setScore(10000)                  -- 设置分数
 -- 相机
-x = xtech_sysval_getScreenX(1)                -- 玩家1 屏幕 X 坐标
-y = xtech_sysval_getScreenY(1)                -- 玩家1 屏幕 Y 坐标
+x = xtech_sysval_getScreenX(1)                -- 屏幕 1 的 X 坐标（世界坐标，1-based）
+y = xtech_sysval_getScreenY(1)                -- 屏幕 1 的 Y 坐标（世界坐标，1-based）
+w = xtech_sysval_getScreenWidth(1)            -- 屏幕 1 的宽度（像素）
+h = xtech_sysval_getScreenHeight(1)           -- 屏幕 1 的高度（像素）
+top = xtech_sysval_getScreenTop(1)            -- HUD 顶部偏移（>600 时居中到 600 区域，等价于 DrawInterface 的 ScreenTop）
+cx = xtech_sysval_getScreenCenterX(1)         -- 屏幕水平中心点（Width / 2）
 -- 游戏状态
 show = xtech_sysval_getShowHud()              -- 是否显示 HUD 平面
 xtech_sysval_setShowHud(false)                -- 隐藏 HUD 平面（禁用 onRenderHud）
@@ -971,7 +990,7 @@ end
 
 ---
 
-### 关卡 / 游戏事件（6 个）
+### 关卡 / 游戏事件（7 个）
 
 #### onLevelLoad()
 **触发时机：** 关卡加载完成，所有对象初始化之后。（已存在，保留）
@@ -980,6 +999,21 @@ end
 #### onLevelComplete()
 **触发时机：** 关卡通关（接触到终点/球/星星/磁带时 `EndLevel = true`）。
 **参数：** 无
+
+#### onPostMacro()
+**触发时机：** `UpdateMacro()` 完成后，`LevelMacro` 回到 `LEVELMACRO_OFF` 时。
+**参数：** 无
+**使用场景：** 在硬编码过关动画结束后重设 `LevelBeatCode`。因为 `UpdateMacro()` 会根据 `LevelMacro` 自动覆盖 `LevelBeatCode`，`onLevelComplete` 中设置的值会被覆盖。`onPostMacro` 在 `UpdateMacro` 结束后触发，此时重设 `LevelBeatCode` 可确保自定义退出路径生效。
+```lua
+function onLevelComplete()
+    xtech_sysval_setLevelMacro(CONST_LEVELMACRO_OFF)  -- 杀死硬编码动画
+end
+function onPostMacro()
+    -- UpdateMacro 已经完成了，此时安全重设 BeatCode
+    xtech_sysval_setLevelBeatCode(CONST_BEATCODE_ALT_FLAG)
+    xtech_sysval_setEndLevel(true)
+end
+```
 
 #### onLevelExit()
 **触发时机：** 关卡退出时（返回世界地图/菜单）。（`onLoopEnd()` 已存在，合并）
@@ -1032,13 +1066,14 @@ end
 | 方块 | `onBlockHit` | 🟡 中 | 🟢 简单 |
 | 方块 | `onBlockDestroy` | 🟢 低 | 🟢 简单 |
 | 关卡 | `onLevelComplete` | 🟢 低 | 🟢 简单 |
+| 关卡 | `onPostMacro` | 🟢 低 | 🟢 简单 |
 | 关卡 | `onLevelExit` | 🟢 低 | 🟢 简单 |
 | 关卡 | `onGameOver` | 🟢 低 | 🟡 中等 |
 | 关卡 | `onPause` / `onUnpause` | 🟢 低 | 🟡 中等 |
 | 传送 | `onWarpEnter` | 🟡 中 | 🟡 中等 |
 | 传送 | `onWarpExit` | 🟡 中 | 🟡 中等 |
 
-**总计：24 个系统事件**
+**总计：25 个系统事件**
 
 ---
 
@@ -1100,6 +1135,8 @@ end
 | Layer 操作 | ✅ 已覆盖 | Layer 类绑定 + xtech_layer_* 函数 |
 | 音频 (AudioSet) | ✅ 已覆盖 | xtech_audio_* 函数 |
 | HUD 文字 | ✅ 已覆盖 | xtech_hud_* 函数（直接渲染，无池泄漏） |
+| HUD 图像 | ✅ P6 新增 | `xtech_hud_showImage` — 屏幕固定图像渲染，支持裁切 |
+| 屏幕尺寸 | ✅ P6 新增 | `xtech_sysval_getScreenWidth/Height/Top/CenterX` — 跨分辨率 HUD 定位 |
 | ShowInterface | ✅ P5 新增 | `xtech_sysval_get/setShowInterface` — 仅隐藏内建界面 |
 | 检查点查询 | ✅ P5 新增 | `xtech_sysval_getCheckpointCount/Id` |
 | 过关宏控制 | ✅ P5 新增 | `xtech_sysval_setLevelMacro` + `setLevelBeatCode` |
@@ -1154,7 +1191,8 @@ end
 | `script/include/xtech_lua_main.h` | 编辑 | 新增 8 个 API 声明 |
 | `script/src/xtech_lua_main.cpp` | 编辑 | 完整 Lua 生命周期 + 延迟调用 + 独立渲染管理 |
 | `script/src/xtech_lua_bindings.h` | 编辑 | 新增 process/clear 函数声明 |
-| `script/src/xtech_lua_bindings.cpp` | 编辑 | 全部绑定 + P0+P1+P2+P3+P5 扩展（~2600行）|
+| `script/src/xtech_lua_bindings.cpp` | 编辑 | 全部绑定 + P0+P1+P2+P3+P5+P6 扩展（~2800行）|
+| `script/src/xtech_lua_bindings.cpp` | 编辑 | P6: `showImage` (HUD), `getScreenWidth/Height/Top/CenterX` (Sysval) |
 | `script/src/xtech_lua_main.cpp` | 编辑 | 新增 XTech Lua 独立渲染生命周期管理 |
 | `script/src/xtech_lua_events.cpp` | 新增 | 系统事件钩子系统 |
 | `src/script/luna/luna.cpp` | 编辑 | `lunaRenderEnd` 添加池回收（ClearQueue） |
@@ -1172,7 +1210,7 @@ end
 | `src/main/outro_loop.cpp` | 编辑 | `xtech_lua_loop()` 钩子 |
 | `src/graphics/gfx_update.cpp` | 编辑 | 4处渲染钩子 |
 
-**总计：** ~2535 行新代码/修改，分布在 11 个文件中。新增 129 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量、9 个 LEVELMACRO 常量、14 个 BEATCODE 常量。
+**总计：** ~2700 行新代码/修改，分布在 11 个文件中。新增 136 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量、9 个 LEVELMACRO 常量、14 个 BEATCODE 常量。
 
 ---
 
@@ -1189,14 +1227,18 @@ end
 - [x] **命名定时器 (TCreate/TClear 等价)** — `xtech_timer_create/cancel/clearAll`
 - [x] **Effect_t 绑定 (FXCreate 等价)** — `xtech_effect_create/get/count/kill` + 152 EFFID 常量
 
-### 已实现（P4 — 16/24 事件）
+### 已实现（P4 — 17/25 事件）
 - [x] **系统事件钩子基础设施** — `xtech_lua_events.cpp/h` + `xtech_event_subscribe()` 订阅机制
 - [x] **onPlayerHurt** / **onPlayerDeath** / **onPlayerDismount** / **onPlayerRespawn**
 - [x] **onNPCDeath** / **onNPCHurt** / **onNPCUpdate** / **onNPCActivate** / **onNPCTalk** / **onNPCGrab**
 - [x] **onBlockHit** / **onBlockDestroy**
-- [x] **onLevelComplete** / **onLevelExit** / **onGameOver** / **onPause**
+- [x] **onLevelComplete** / **onPostMacro** / **onLevelExit** / **onGameOver** / **onPause**
 
-### 计划实现（P4 剩余 — 8 个事件）
+### 已实现（P6）
+- [x] **HUD 图像渲染** — `xtech_hud_showImage(imgCode, x, y, sx, sy, sw, sh)`，屏幕固定，支持裁切
+- [x] **屏幕尺寸 API** — `xtech_sysval_getScreenWidth/Height/Top/CenterX`，跨分辨率 HUD 定位
+
+### 计划实现（P4 剩余 — 7 个事件）
 - [ ] **onNPCTouch** — TheXTech 中无直接触发点，由事件系统驱动
 - [ ] **onPlayerPowerUp** / **onPlayerMount** / **onPlayerSwitchChar**
 - [ ] **onUnpause**
@@ -1258,7 +1300,7 @@ function onLoop()
     end
 end
 
-function onRenderHud(Z)
+function onRenderHud(Z, numScreens)
     xtech_hud_showText("Lua Active!", 10, 600, 3)
 end
 ```
@@ -1422,6 +1464,34 @@ function onLoop()
             end
         end
     end
+end
+```
+
+### HUD 图像渲染示例 ✅ P6 新增
+
+```lua
+-- 用 HUD 图像渲染自定义计分板
+local hudImg, iconImg, coinImg
+
+function onLoad()
+    -- 加载 HUD 资源（精灵图包含多个 UI 元素）
+    hudImg  = xtech_sprite_loadImage("hud_sheet.png")
+    iconImg = xtech_sprite_loadImage("icons.png")
+    coinImg = xtech_sprite_loadImage("coin_anim.png", 100, 0xFF00DC)
+end
+
+function onRenderHud(Z, numScreens)
+    local top  = xtech_sysval_getScreenTop(Z + 1)     -- 1-based
+    local cx   = xtech_sysval_getScreenCenterX(Z + 1)
+    local sw   = xtech_sysval_getScreenWidth(Z + 1)
+
+    -- 左上角：裁切绘制"生命"图标（从 icons.png (0,0) 取 32×16）
+    xtech_hud_showImage(iconImg, 10, top + 10, 0, 0, 32, 16)
+
+    -- 右侧：从精灵图裁切绘制金币计数背景
+    -- hud_sheet.png 中 (64, 0) 处有 32×32 的金币框
+    xtech_hud_showImage(hudImg, sw - 100, top + 50, 64, 0, 32, 32)
+    xtech_hud_showText(tostring(xtech_sysval_getCoins()), sw - 60, top + 56, 3)
 end
 ```
 

@@ -44,6 +44,8 @@ struct NPCTraits_t
     int16_t WidthGFX = 0;
     //Public NPCHeightGFX(0 To maxNPCType) As Integer 'NPC gfx height
     int16_t HeightGFX = 0;
+    //! Total sprite sheet height for vertical frame splitting (0 = use default heuristic)
+    int16_t GfxSplitHeight = 0;
     //Public NPCSpeedvar(0 To maxNPCType) As Single 'NPC Speed Change
     numf_t Speedvar = 1;
 

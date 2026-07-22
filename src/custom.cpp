@@ -378,6 +378,8 @@ void LoadCustomNPC(int A, std::string cFileName)
         traits.WidthGFX = int(npc.gfxwidth);
     if(npc.en_gfxheight)
         traits.HeightGFX = int(npc.gfxheight);
+    if(npc.en_gfxsplitheight)
+        traits.GfxSplitHeight = int(npc.gfxsplitheight);
     if(npc.en_score)
         traits.Score = int(npc.score);
     if(npc.en_playerblock)

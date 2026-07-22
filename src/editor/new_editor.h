@@ -106,6 +106,7 @@ private:
         SPECIAL_PAGE_BLOCK_CONTENTS,
         SPECIAL_PAGE_WARP_TRANSITION,
         SPECIAL_PAGE_LEVEL_EXIT,
+        SPECIAL_PAGE_GFX_FRAMES,
         SPECIAL_PAGE_WORLD_SETTINGS,
         SPECIAL_PAGE_EDITOR_SETTINGS,
         SPECIAL_PAGE_LEVELTEST_HELDNPC,
@@ -242,6 +243,8 @@ private:
     void UpdatePathScreen(CallMode mode);
 
     void UpdateSelectListScreen(CallMode mode);
+
+    void UpdateGfxFramesScreen(CallMode mode);
 
     void UpdateFileScreen(CallMode mode);
     void UpdateBrowserScreen(CallMode mode);

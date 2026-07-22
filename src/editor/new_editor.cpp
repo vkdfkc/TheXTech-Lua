@@ -543,8 +543,31 @@ void EditorScreen::UpdateNPC(CallMode mode, int x, int y, NPCID type)
         bool sel = (EditorCursor.NPC.Type == type ||
             (EditorCursor.NPC.Special == type && NPCIsContainer(EditorCursor.NPC)));
 
-        if(UpdateNPCButton(mode, x, y, type, sel) && !sel)
-            SetEditorNPCType(type);
+        if(UpdateNPCButton(mode, x, y, type, sel))
+        {
+            if(!sel)
+            {
+                SetEditorNPCType(type);
+                EditorCursor.NPC.extx = 0;
+                EditorCursor.NPC.exty = 0;
+            }
+
+            // Show frame selector if extended frames exist
+            int gw = NPCTraits[type].WidthGFX;
+            int gh = NPCTraits[type].HeightGFX;
+            int tf = NPCTraits[type].TFrames;
+            int gsh = NPCTraits[type].GfxSplitHeight;
+            if(gw == 0) { gw = NPCTraits[type].TWidth; gh = NPCTraits[type].THeight; }
+            if(tf <= 0) tf = 1;
+            if(gw > 0 && gh > 0)
+            {
+                int cols = GFXNPC[type].w / gw;
+                int row_h = (gsh > 0) ? gsh : (gh * tf);
+                int rows = (gsh > 0) ? GFXNPC[type].h / row_h : 1;
+                if(cols > 1 || rows > 1)
+                    m_special_page = SPECIAL_PAGE_GFX_FRAMES;
+            }
+        }
     }
     else
     {
@@ -2702,6 +2725,226 @@ void EditorScreen::UpdateSelectListScreen(CallMode mode)
     }
 }
 
+void EditorScreen::UpdateGfxFramesScreen(CallMode mode)
+{
+    // Close button
+    if(UpdateButton(mode, e_ScreenW - 40 + 4, 40 + 4, GFX.EIcons, false, 0, 32*Icon::x, 32, 32))
+    {
+        m_special_page = SPECIAL_PAGE_NONE;
+        return;
+    }
+
+    // Determine if we're selecting for NPC or Block
+    bool is_npc = (EditorCursor.Mode == OptCursor_t::LVL_NPCS);
+
+    int GFX_type;
+    StdPicture* tex;
+    int frame_w, frame_h, t_frames, gfx_split_h;
+    int* extx_ptr, *exty_ptr;
+
+    if(is_npc)
+    {
+        // Use same GFX type logic as the GFXSlot button
+        if(EditorCursor.NPC.Type == NPCID_ITEM_BUBBLE)
+            GFX_type = EditorCursor.NPC.Special;
+        else if(NPCIsContainer(EditorCursor.NPC))
+            GFX_type = EditorCursor.NPC.Special;
+        else
+            GFX_type = EditorCursor.NPC.Type;
+
+        if(GFX_type < 1 || GFX_type > maxNPCType)
+        {
+            m_special_page = SPECIAL_PAGE_NONE;
+            return;
+        }
+
+        tex = &GFXNPC[GFX_type];
+        frame_w = NPCTraits[GFX_type].WidthGFX;
+        frame_h = NPCTraits[GFX_type].HeightGFX;
+        if(frame_w == 0)
+        {
+            frame_w = NPCTraits[GFX_type].TWidth;
+            frame_h = NPCTraits[GFX_type].THeight;
+        }
+        t_frames = NPCTraits[GFX_type].TFrames;
+        if(t_frames <= 0) t_frames = 1;
+        gfx_split_h = NPCTraits[GFX_type].GfxSplitHeight;
+        extx_ptr = &EditorCursor.NPC.extx;
+        exty_ptr = &EditorCursor.NPC.exty;
+    }
+    else
+    {
+        // Block mode
+        GFX_type = EditorCursor.Block.Type;
+
+        if(GFX_type < 1 || GFX_type >= maxBlockType)
+        {
+            m_special_page = SPECIAL_PAGE_NONE;
+            return;
+        }
+
+        tex = &GFXBlock[GFX_type];
+        frame_w = BlockWidth[GFX_type];
+        frame_h = BlockHeight[GFX_type];
+        if(frame_w <= 0)
+        {
+            frame_w = 32;
+            frame_h = 32;
+        }
+        t_frames = 1;
+        gfx_split_h = 0;
+        extx_ptr = &EditorCursor.Block.extx;
+        exty_ptr = &EditorCursor.Block.exty;
+    }
+
+    if(frame_w <= 0 || frame_h <= 0 || tex->w <= 0 || tex->h <= 0)
+    {
+        m_special_page = SPECIAL_PAGE_NONE;
+        return;
+    }
+
+    // Number of columns/rows in the sprite sheet grid
+    int sheet_cols = tex->w / frame_w;
+    int row_h = (gfx_split_h > 0) ? gfx_split_h : (frame_h * t_frames);
+    int sheet_rows = (gfx_split_h > 0) ? tex->h / row_h : 1;
+    if(sheet_cols < 1) sheet_cols = 1;
+    if(sheet_rows < 1) sheet_rows = 1;
+
+    // If there's only one frame position, no need for popup
+    if(sheet_cols <= 1 && sheet_rows <= 1)
+    {
+        *extx_ptr = 0;
+        *exty_ptr = 0;
+        m_special_page = SPECIAL_PAGE_NONE;
+        return;
+    }
+
+    // Title
+    if(mode == CallMode::Render)
+    {
+        if(is_npc)
+            SuperPrint(fmt::format_ne("Select frame: NPC-{0}", GFX_type), 3, 10, 10);
+        else
+            SuperPrint(fmt::format_ne("Select frame: Block-{0}", GFX_type), 3, 10, 10);
+    }
+
+    // Grid layout constants
+    const int cell_padding = 6;
+    const int cell_size = 44;        // fixed cell size for consistent layout
+    const int grid_start_y = 50;
+    const int label_space = 14;
+
+    // Determine how many columns fit on screen
+    int display_cols = (e_ScreenW - 60) / (cell_size + cell_padding);
+    if(display_cols < 1) display_cols = 1;
+    if(display_cols > sheet_cols) display_cols = sheet_cols;
+
+    int total_cells = sheet_cols * sheet_rows;
+
+    // Center the grid horizontally
+    int grid_total_w = display_cols * (cell_size + cell_padding) - cell_padding;
+    int grid_start_x = (e_ScreenW - grid_total_w) / 2;
+
+    // Render background
+    if(mode == CallMode::Render)
+    {
+        XRender::renderRect(0, 40, e_ScreenW, e_ScreenH - 40, XTColorF(0.1_n, 0.1_n, 0.2_n, 0.85_n), true);
+    }
+
+    // Render all frame cells (flat layout: sheet_cols columns, sheet_rows rows of cells)
+    for(int i = 0; i < total_cells; i++)
+    {
+        int ex = i % sheet_cols;    // extx value (column in sprite sheet)
+        int ey = i / sheet_cols;    // exty value (row in sprite sheet)
+        if(ey >= sheet_rows) break;
+
+        int display_c = i % display_cols;
+        int display_r = i / display_cols;
+
+        int cx = grid_start_x + display_c * (cell_size + cell_padding);
+        int cy = grid_start_y + display_r * (cell_size + cell_padding + label_space);
+
+        if(cy + cell_size > e_ScreenH - 20)
+            break;
+
+        bool is_selected = (*extx_ptr == ex && *exty_ptr == ey);
+
+        // Hit test for mouse clicks
+        bool hover = (e_CursorX >= cx && e_CursorX < cx + cell_size
+            && e_CursorY >= cy && e_CursorY < cy + cell_size);
+
+        if(mode == CallMode::Logic)
+        {
+            if(MenuMouseRelease && hover)
+            {
+                PlaySound(SFX_Saw);
+                *extx_ptr = ex;
+                *exty_ptr = ey;
+                m_special_page = SPECIAL_PAGE_NONE;
+                return;
+            }
+        }
+        else // Render mode
+        {
+            // Selection highlight
+            if(is_selected)
+            {
+                if(hover && SharedCursor.Primary)
+                    XRender::renderRect(cx - 2, cy - 2, cell_size + 4, cell_size + 4,
+                        XTColorF(0.0_n, 0.5_n, 0.0_n, 1.0_n), true);
+                else
+                    XRender::renderRect(cx - 2, cy - 2, cell_size + 4, cell_size + 4,
+                        XTColorF(0.0_n, 1.0_n, 0.0_n, 1.0_n), true);
+            }
+            else if(hover && SharedCursor.Primary)
+                XRender::renderRect(cx - 2, cy - 2, cell_size + 4, cell_size + 4,
+                    XTColorF(0.0_n, 0.0_n, 0.0_n, 1.0_n), true);
+            else
+                XRender::renderRect(cx - 2, cy - 2, cell_size + 4, cell_size + 4,
+                    XTColorF(1.0_n, 1.0_n, 1.0_n, 0.5_n), true);
+
+            // Cell background
+            if(SharedCursor.Primary && hover)
+                XRender::renderRect(cx, cy, cell_size, cell_size,
+                    XTColorF(0.2_n, 0.2_n, 0.2_n), true);
+            else
+                XRender::renderRect(cx, cy, cell_size, cell_size,
+                    XTColorF(0.5_n, 0.5_n, 0.5_n), true);
+
+            // Scale and center the frame within the cell
+            int src_x = ex * frame_w;
+            int src_y = ey * row_h;
+            int src_w = frame_w;
+            int src_h = frame_h;
+
+            int dst_w, dst_h;
+            if(src_w > cell_size && src_w >= src_h)
+            {
+                dst_h = (src_h * cell_size) / src_w;
+                dst_w = cell_size;
+            }
+            else if(src_h > cell_size && src_h > src_w)
+            {
+                dst_w = (src_w * cell_size) / src_h;
+                dst_h = cell_size;
+            }
+            else
+            {
+                dst_w = src_w;
+                dst_h = src_h;
+            }
+            int dst_x = cx + (cell_size - dst_w) / 2;
+            int dst_y = cy + (cell_size - dst_h) / 2;
+
+            XRender::renderTextureScaleEx(dst_x, dst_y, dst_w, dst_h, *tex, src_x, src_y, src_w, src_h);
+
+            // Show coordinates label below each cell
+            SuperPrintCenter(fmt::format_ne("{0},{1}", ex, ey), 1,
+                cx + cell_size / 2, cy + cell_size + 2, XTColorF(0.7_n, 0.7_n, 0.7_n));
+        }
+    }
+}
+
 void EditorScreen::UpdateEventsSubScreen(CallMode mode)
 {
     // render shared GUI elements on right
@@ -3298,10 +3541,38 @@ void EditorScreen::UpdateBlock(CallMode mode, int x, int y, int type)
 
     bool sel = EditorCursor.Block.Type == type;
 
-    if(UpdateBlockButton(mode, x, y, type, sel) && !sel)
+    // Compute draw size (same logic as UpdateBlockButton)
+    int draw_width = 32, draw_height = 32;
+    if(!BlockIsSizable[type])
     {
-        // printf("Block %d\n", type);
-        SetEditorBlockType(type);
+        if(BlockWidth[type] > 0)
+            draw_width = BlockWidth[type];
+        if(BlockHeight[type] > 0)
+            draw_height = BlockHeight[type];
+    }
+
+    // Use UpdateButton directly to support re-selecting the current type
+    if(UpdateButton(mode, x, y, GFXBlock[type], sel, 0, BlockFrame[type] * 32, draw_width, draw_height))
+    {
+        if(!sel)
+        {
+            // printf("Block %d\n", type);
+            SetEditorBlockType(type);
+            EditorCursor.Block.extx = 0;
+            EditorCursor.Block.exty = 0;
+        }
+
+        // Show frame selector if extended frames exist
+        int bw = BlockWidth[type];
+        int bh = BlockHeight[type];
+        if(bw <= 0) { bw = 32; bh = 32; }
+        if(bw > 0 && bh > 0)
+        {
+            int cols = GFXBlock[type].w / bw;
+            int rows = GFXBlock[type].h / bh;
+            if(cols > 1 || rows > 1)
+                m_special_page = SPECIAL_PAGE_GFX_FRAMES;
+        }
     }
 }
 
@@ -5620,6 +5891,8 @@ void EditorScreen::UpdateEditorScreen(CallMode mode, bool second_screen)
         UpdateWorldSettingsScreen(mode);
     // else if(m_special_page == SPECIAL_PAGE_MAGICBLOCK)
     //     UpdateMagicBlockScreen(mode);
+    else if(m_special_page == SPECIAL_PAGE_GFX_FRAMES)
+        UpdateGfxFramesScreen(mode);
     else if(m_special_page == SPECIAL_PAGE_EVENT_MUSIC || m_special_page == SPECIAL_PAGE_EVENT_BACKGROUND
         || m_special_page == SPECIAL_PAGE_EVENT_SOUND || m_special_page == SPECIAL_PAGE_SECTION_BACKGROUND
         || m_special_page == SPECIAL_PAGE_SECTION_MUSIC || m_special_page == SPECIAL_PAGE_LEVEL_EXIT

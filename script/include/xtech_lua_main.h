@@ -10,7 +10,7 @@ extern void xtech_lua_reset();
 extern void xtech_lua_renderStart();
 extern void xtech_lua_renderEnd();
 extern void xtech_lua_render(int screenZ);
-extern void xtech_lua_renderHud(int screenZ);
+extern void xtech_lua_renderHud(int screenZ, int numScreens);
 
 struct lua_State;
 extern lua_State* xtech_lua_getState();

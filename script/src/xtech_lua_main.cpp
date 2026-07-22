@@ -361,9 +361,9 @@ void xtech_lua_render(int screenZ)
 }
 
 
-void xtech_lua_renderHud(int screenZ)
+void xtech_lua_renderHud(int screenZ, int numScreens)
 {
-    safeCallLuaFuncWith(g_luaFunc_onRenderHud, "onRenderHud", screenZ);
+    safeCallLuaFuncWith(g_luaFunc_onRenderHud, "onRenderHud", screenZ, numScreens);
 }
 
 

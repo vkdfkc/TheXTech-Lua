@@ -69,6 +69,8 @@ extern "C"
 #include "script/luna/sprite_component.h"
 #include "script/luna/sprite_funcs.h"
 #include "script/luna/renderop_string.h"
+#include "script/luna/renderop_bitmap.h"
+#include "script/luna/lunarender.h"
 
 #include "xtech_lua_bindings.h"
 #include "xtech_lua_main.h"
@@ -700,6 +702,43 @@ static void showLevelFile(double x, double y, int font)
     SuperPrint(len, FileName.c_str(), font, ix, iy);
 }
 
+static void showImage(int imgResourceCode, double x, double y,
+    double sx, double sy, double sw, double sh)
+{
+    if(imgResourceCode == 0)
+        return;
+
+    auto *img = Renderer::Get().GetImageForResourceCode(imgResourceCode);
+    if(!img)
+        return;
+
+    int ix = static_cast<int>(x);
+    int iy = static_cast<int>(y);
+    int isx = static_cast<int>(sx);
+    int isy = static_cast<int>(sy);
+    int isw = static_cast<int>(sw);
+    int ish = static_cast<int>(sh);
+
+    // If no source size specified, use full image
+    if(isw <= 0) isw = img->getW();
+    if(ish <= 0) ish = img->getH();
+
+    // Adjust for non-800x600 resolutions
+    Render::TranslateScreenCoords(ix, iy, isw, ish);
+
+    auto *op = new RenderBitmapOp();
+    op->m_FramesLeft = 1;
+    op->x = ix;
+    op->y = iy;
+    op->sx = isx;
+    op->sy = isy;
+    op->sw = isw;
+    op->sh = ish;
+    op->direct_img = img;
+
+    Renderer::Get().AddOp(op);
+}
+
 static void debugPrint(const std::string &text)
 {
     pLogDebug("Lua: %s", text.c_str());
@@ -1133,6 +1172,37 @@ static int sysval_getScreenY(int screen)
     if(screen >= 0 && screen <= 2)
         return (int)vScreen[screen].Y;
     return 0;
+}
+
+static int sysval_getScreenWidth(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+        return (int)vScreen[screen].Width;
+    return 800;
+}
+
+static int sysval_getScreenHeight(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+        return (int)vScreen[screen].Height;
+    return 600;
+}
+
+static int sysval_getScreenTop(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+    {
+        int h = (int)vScreen[screen].Height;
+        return (h > 600) ? h / 2 - 300 : 0;
+    }
+    return 0;
+}
+
+static int sysval_getScreenCenterX(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+        return (int)vScreen[screen].Width / 2;
+    return 400;
 }
 
 static bool sysval_getShowHud() { return ShowOnScreenHUD; }
@@ -2038,6 +2108,7 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_hud_showLevelName", &LuaHUD::showLevelName),
         def("xtech_hud_showLevelFile", &LuaHUD::showLevelFile),
         def("xtech_hud_debugPrint", &LuaHUD::debugPrint),
+        def("xtech_hud_showImage", &LuaHUD::showImage),
 
         // ================================================================
         // Variable API functions
@@ -2075,6 +2146,10 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_sysval_setScore", &LuaMisc::sysval_setScore),
         def("xtech_sysval_getScreenX", &LuaMisc::sysval_getScreenX),
         def("xtech_sysval_getScreenY", &LuaMisc::sysval_getScreenY),
+        def("xtech_sysval_getScreenWidth", &LuaMisc::sysval_getScreenWidth),
+        def("xtech_sysval_getScreenHeight", &LuaMisc::sysval_getScreenHeight),
+        def("xtech_sysval_getScreenTop", &LuaMisc::sysval_getScreenTop),
+        def("xtech_sysval_getScreenCenterX", &LuaMisc::sysval_getScreenCenterX),
         def("xtech_sysval_getShowHud", &LuaMisc::sysval_getShowHud),
         def("xtech_sysval_setShowHud", &LuaMisc::sysval_setShowHud),
         def("xtech_sysval_getShowInterface", &LuaMisc::sysval_getShowInterface),

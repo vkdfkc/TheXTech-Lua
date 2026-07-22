@@ -3024,7 +3024,7 @@ void UpdateGraphicsScreen(Screen_t& screen)
                 lunaRenderHud(Z);
 #endif
 #ifdef ENABLE_XTECH_LUA
-                xtech_lua_renderHud(Z);
+                xtech_lua_renderHud(Z, numScreens);
 #endif
 
                 // this is LunaScript's way of disabling the original SMBX HUD, so it shouldn't affect the Luna HUD

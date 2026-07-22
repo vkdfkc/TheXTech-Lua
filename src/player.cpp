@@ -1846,10 +1846,8 @@ void PlayerFrame(Player_t &p)
 
         if(p.Character == 5)
             p.Frame = 11;
-        else if((p.Character == 1 || p.Character == 2) && p.State == 1)
-            p.Frame = -4;
         else
-            p.Frame = -6;
+            p.Frame = 26; // Climbing sprite at tile (7,5)
 
         return;
     }

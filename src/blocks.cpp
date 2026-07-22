@@ -730,6 +730,7 @@ void BlockHit(int A, bool HitDown, int whatPlayer)
             }
 
             nn.Effect2 = 0;
+            nn.Layer = b.Layer;
             syncLayers_NPC(numNPCs);
             CheckSectionNPC(numNPCs);
 
