@@ -46,7 +46,8 @@ static inline void NPCEffectLogic_EmergeUp(int A)
 
     NPC[A].Frame = EditorNPCFrame(NPC[A].Type, NPC[A].Direction, A);
     NPC[A].Effect2 += 1;
-    NPC[A].Location.Y -= 1; // .01
+    NPC[A].DefaultLocationY -= 1;
+    NPC[A].Location.Y = NPC[A].DefaultLocationY + Layer[NPC[A].Layer].OffsetY;
     NPC[A].Location.Height += 1;
 
     if(NPC[A]->HeightGFX > 0)
@@ -102,7 +103,8 @@ static inline void NPCEffectLogic_EmergeDown(int A)
     }
 
     NPC[A].Effect2 += 1;
-    NPC[A].Location.Y += 1;
+    NPC[A].DefaultLocationY += 1;
+    NPC[A].Location.Y = NPC[A].DefaultLocationY + Layer[NPC[A].Layer].OffsetY;
 
     if(NPC[A].Effect2 == 32)
     {

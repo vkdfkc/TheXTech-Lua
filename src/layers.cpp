@@ -1830,8 +1830,8 @@ void UpdateLayers()
                 {
                     // if(Block[B].Layer == Layer[A].Name)
                     //{
-                    Block[B].Location.X += SpeedX;
-                    Block[B].Location.Y += SpeedY;
+                    Block[B].Location.X = Block[B].DefaultLocationX + Layer[A].OffsetX;
+                    Block[B].Location.Y = Block[B].DefaultLocationY + Layer[A].OffsetY;
                     Block[B].Location.SpeedX = SpeedX;
                     Block[B].Location.SpeedY = SpeedY;
 
@@ -1853,8 +1853,8 @@ void UpdateLayers()
                 {
                     // if(Background[B].Layer == Layer[A].Name)
                     //{
-                    Background[B].Location.X += SpeedX;
-                    Background[B].Location.Y += SpeedY;
+                    Background[B].Location.X = Background[B].DefaultLocationX + Layer[A].OffsetX;
+                    Background[B].Location.Y = Background[B].DefaultLocationY + Layer[A].OffsetY;
 
                     if(inactive)
                         treeBackgroundUpdateLayer(A, B);
@@ -1868,8 +1868,8 @@ void UpdateLayers()
                 {
                     // if(Water[B].Layer == Layer[A].Name)
                     //{
-                    Water[B].Location.X += SpeedX;
-                    Water[B].Location.Y += SpeedY;
+                    Water[B].Location.X = Water[B].DefaultLocationX + Layer[A].OffsetX;
+                    Water[B].Location.Y = Water[B].DefaultLocationY + Layer[A].OffsetY;
 
                     if(inactive)
                         treeWaterUpdateLayer(A, B);
@@ -1880,9 +1880,6 @@ void UpdateLayers()
                 {
                     // if(NPC[B].Layer == Layer[A].Name)
                     {
-                        NPC[B].DefaultLocationX += SpeedX;
-                        NPC[B].DefaultLocationY += SpeedY;
-
                         if(!NPC[B].Active || NPC[B].Generator || NPC[B].Effect != NPCEFF_NORMAL ||
                            NPC[B]->IsACoin || NPC[B].Type == NPCID_PLANT_S3 || NPC[B].Type == NPCID_STONE_S3 ||
                            NPC[B].Type == NPCID_BOTTOM_PLANT || NPC[B].Type == NPCID_SIDE_PLANT || NPC[B].Type == NPCID_FALL_BLOCK_RED ||
@@ -1923,8 +1920,8 @@ void UpdateLayers()
                             }
                             else
                             {
-                                NPC[B].Location.X += SpeedX;
-                                NPC[B].Location.Y += SpeedY;
+                                NPC[B].Location.X = NPC[B].DefaultLocationX + Layer[A].OffsetX;
+                                NPC[B].Location.Y = NPC[B].DefaultLocationY + Layer[A].OffsetY;
                             }
 
                             if(NPC[B].Effect == NPCEFF_WARP)
@@ -1955,10 +1952,10 @@ void UpdateLayers()
 
                 for(int B : Layer[A].warps)
                 {
-                    Warp[B].Entrance.X += SpeedX;
-                    Warp[B].Entrance.Y += SpeedY;
-                    Warp[B].Exit.X += SpeedX;
-                    Warp[B].Exit.Y += SpeedY;
+                    Warp[B].Entrance.X = Warp[B].DefaultEntranceX + Layer[A].OffsetX;
+                    Warp[B].Entrance.Y = Warp[B].DefaultEntranceY + Layer[A].OffsetY;
+                    Warp[B].Exit.X = Warp[B].DefaultExitX + Layer[A].OffsetX;
+                    Warp[B].Exit.Y = Warp[B].DefaultExitY + Layer[A].OffsetY;
                 }
             }
         }

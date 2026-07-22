@@ -731,6 +731,8 @@ void BlockHit(int A, bool HitDown, int whatPlayer)
 
             nn.Effect2 = 0;
             nn.Layer = b.Layer;
+            nn.DefaultLocationX = nn.Location.X - Layer[b.Layer].OffsetX;
+            nn.DefaultLocationY = nn.Location.Y - Layer[b.Layer].OffsetY;
             syncLayers_NPC(numNPCs);
             CheckSectionNPC(numNPCs);
 
@@ -1813,6 +1815,8 @@ bool PSwitch(bool enabled)
                     nn.Location = Block[A].Location;
                     nn.Location.SpeedX = 0;
                     nn.Location.SpeedY = 0;
+                    nn.DefaultLocationX = nn.Location.X - Layer[nn.Layer].OffsetX;
+                    nn.DefaultLocationY = nn.Location.Y - Layer[nn.Layer].OffsetY;
                     nn.Location.Width = nn->TWidth;
                     nn.Location.Height = nn->THeight;
                     nn.Location.X += (Block[A].Location.Width - nn.Location.Width) / 2;
@@ -1918,6 +1922,8 @@ bool PSwitch(bool enabled)
                     nn.Location = Block[A].Location;
                     nn.Location.SpeedX = 0;
                     nn.Location.SpeedY = 0;
+                    nn.DefaultLocationX = nn.Location.X - Layer[nn.Layer].OffsetX;
+                    nn.DefaultLocationY = nn.Location.Y - Layer[nn.Layer].OffsetY;
                     nn.Location.Width = nn->TWidth;
                     nn.Location.Height = nn->THeight;
                     nn.Location.X += (Block[A].Location.Width - nn.Location.Width) / 2;

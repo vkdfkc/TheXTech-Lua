@@ -793,6 +793,8 @@ bool OpenLevel_Block(void* userdata, LevelBlock& b)
         block.Location.Y = b.y;
         block.Location.Height = b.h;
         block.Location.Width = b.w;
+        block.DefaultLocationX = block.Location.X;
+        block.DefaultLocationY = block.Location.Y;
 
         // don't allow improper rects
         if(block.Location.Width < 0)
@@ -890,6 +892,8 @@ bool OpenLevel_Background(void* userdata, LevelBGO& b)
 
         bgo.Location.X = b.x;
         bgo.Location.Y = b.y;
+        bgo.DefaultLocationX = bgo.Location.X;
+        bgo.DefaultLocationY = bgo.Location.Y;
         bgo.Type = int(b.id);
 
         if(IF_OUTRANGE(bgo.Type, 1, maxBackgroundType)) // Drop ID to 1 for BGOs of out of range IDs
@@ -1121,6 +1125,10 @@ bool OpenLevel_Warp(void* userdata, LevelDoor& w)
         warp.Entrance.Y = w.iy;
         warp.Exit.X = w.ox;
         warp.Exit.Y = w.oy;
+        warp.DefaultEntranceX = warp.Entrance.X;
+        warp.DefaultEntranceY = warp.Entrance.Y;
+        warp.DefaultExitX = warp.Exit.X;
+        warp.DefaultExitY = warp.Exit.Y;
         warp.Direction = w.idirect;
         warp.Direction2 = w.odirect;
         warp.Effect = w.type;
@@ -1196,6 +1204,8 @@ bool OpenLevel_Water(void* userdata, LevelPhysEnv& w)
         water.Location.Y = w.y;
         water.Location.Width = w.w;
         water.Location.Height = w.h;
+        water.DefaultLocationX = water.Location.X;
+        water.DefaultLocationY = water.Location.Y;
 
         // don't allow improper rects
         if(water.Location.Width < 0)

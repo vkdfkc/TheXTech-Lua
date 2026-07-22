@@ -873,6 +873,9 @@ struct Background_t
     uint8_t SortPriority = 0;
 //    Location As Location
     SpeedlessLocation_t Location;
+//! Default (original) location, used with Layer.Offset for precise positioning
+    num_t DefaultLocationX = 0_n;
+    num_t DefaultLocationY = 0_n;
 
     //! SortPriority at which PLANE_LVL_BGO_NORM, PLANE_LVL_3D_MAIN, PLANE_LVL_BGO_FG, and PLANE_LVL_BGO_TOP start
     static constexpr uint8_t PRI_NORM_START = 0x30;
@@ -904,6 +907,9 @@ struct Water_t
 {
 //    Location As Location
     SpeedlessLocation_t Location;
+//! Default (original) location, used with Layer.Offset for precise positioning
+    num_t DefaultLocationX = 0_n;
+    num_t DefaultLocationY = 0_n;
 //    Buoy As Single 'not used
     // float Buoy = 0.0f;
 //    Quicksand As Boolean
@@ -922,6 +928,9 @@ struct Block_t
 {
 //    Location As Location
     Location_t Location;
+//! Default (original) location, used with Layer.Offset for precise positioning
+    num_t DefaultLocationX = 0_n;
+    num_t DefaultLocationY = 0_n;
 //! EXTRA: temporary workaround: is it a smashable block of type 90 (normally not smashable)? (previously Special2)
     bool forceSmashable = false;
 //    Slippy As Boolean
@@ -1133,8 +1142,14 @@ struct Warp_t
 {
 //    Entrance As Location 'location of warp entrance
     SpeedlessLocation_t Entrance;
+//! Default (original) entrance location, used with Layer.Offset for precise positioning
+    num_t DefaultEntranceX = 0_n;
+    num_t DefaultEntranceY = 0_n;
 //    Exit As Location 'location of warp exit
     SpeedlessLocation_t Exit;
+//! Default (original) exit location
+    num_t DefaultExitX = 0_n;
+    num_t DefaultExitY = 0_n;
 //    Locked As Boolean 'requires a key NPC
     bool Locked = false;
 //    WarpNPC As Boolean 'allows NPC through the warp
