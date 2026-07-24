@@ -89,7 +89,8 @@ void YoshiPound(int A, int mount, bool BreakBlocks = false);
 
 
 // NEW (but derived from existing code) forces player to jump out of mount as they do for AltJump, bypassing all checks.
-void PlayerDismount(const int A);
+// if silent is true, no jump velocity or sound effects are applied (mount NPC is still created)
+void PlayerDismount(const int A, bool silent = false);
 
 // NEW: checks if player A is in the mouth of the pet of any player on a screen
 bool InOnscreenPet(int plr_A, const Screen_t& screen);

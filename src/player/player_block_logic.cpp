@@ -305,7 +305,7 @@ void PlayerBlockLogic(int A, int& floorBlock, bool& movingBlock, bool& DontReset
                                         }
                                         else if(!BlockIsSizable[Block[floorBlock].Type])
                                         {
-                                            if(Block[floorBlock].Location.Y != Block[B].Location.Y)
+                                            if(num_t::abs(Block[floorBlock].Location.Y - Block[B].Location.Y) > 1.0_n)
                                                 floorBlock = 0;
                                         }
                                         else

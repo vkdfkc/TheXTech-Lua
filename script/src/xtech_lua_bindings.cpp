@@ -22,6 +22,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <map>
 
 extern "C"
 {
@@ -63,6 +64,7 @@ extern "C"
 #include "script/luna/lunadefs.h"
 #include "script/luna/autocode_manager.h"
 #include "script/luna/lunarender.h"
+#include "core/render.h"
 #include "script/luna/lunaspriteman.h"
 #include "script/luna/lunaimgbox.h"
 #include "script/luna/csprite.h"
@@ -71,6 +73,7 @@ extern "C"
 #include "script/luna/renderop_string.h"
 #include "script/luna/renderop_bitmap.h"
 #include "script/luna/lunarender.h"
+#include "core/render.h"
 
 #include "xtech_lua_bindings.h"
 #include "xtech_lua_main.h"
@@ -321,6 +324,15 @@ static bool usesHearts(Player_t *p)
 static void memSet(size_t offset, num_t value, int op, int ftype)
 {
     PlayerF::MemSet(offset, value, (OPTYPE)op, (FIELDTYPE)ftype);
+}
+
+// P6: expose PlayerDismount — silent dismount (mount becomes NPC, no jump/sound)
+static void dismount(Player_t *p)
+{
+    if(!p) return;
+    int idx = (int)(p - &Player[1]) + 1; // 1-based player index
+    if(idx >= 1 && idx <= numPlayers)
+        ::PlayerDismount(idx, true);  // silent: no jump velocity, no sound
 }
 
 } // namespace LuaPlayer
@@ -653,64 +665,77 @@ static void setMusic(int sec, int musicId, const std::string &filename)
 // HUD / Render API wrappers
 // ============================================================================
 
+extern void HudRenderNPC(int npcId, int x, int y, int w, int h);
+extern void HudRenderImage(int x, int y, int w, int h, StdPicture &tex, int sx, int sy);
+
+// Simple texture storage for HUD images — uses game's native LoadPicture,
+// avoiding LunaImage move-semantics issues.
+static std::map<int, StdPicture> s_hudTextures;
+
 namespace LuaHUD
 {
 
 // NOTE: parameters use double (not num_t) because luabind cannot convert
 // Lua numbers to num_t (num_t's double constructor is explicitly deleted).
-static void showText(const std::string &text, double x, double y, int font)
+static void showText(const std::string &text, double x, double y, double font)
 {
     if(text.empty())
         return;
-    if(font < 1 || font > 5)
-        font = 3;
+    int iFont = static_cast<int>(font);
+    if(iFont < 1 || iFont > 5)
+        iFont = 3;
 
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(text.size());
-    int w = SuperTextPixLen(len, text.c_str(), font);
+    int w = SuperTextPixLen(len, text.c_str(), iFont);
     Render::TranslateScreenCoords(ix, iy, w, 18);
-    SuperPrint(len, text.c_str(), font, ix, iy);
+    SuperPrint(len, text.c_str(), iFont, ix, iy);
 }
 
-static void showLevelName(double x, double y, int font)
+static void showLevelName(double x, double y, double font)
 {
-    if(font < 1 || font > 5)
-        font = 3;
+    int iFont = static_cast<int>(font);
+    if(iFont < 1 || iFont > 5)
+        iFont = 3;
     const std::string &name = LevelName.empty() ? FileName : LevelName;
     if(name.empty())
         return;
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(name.size());
-    int w = SuperTextPixLen(len, name.c_str(), font);
+    int w = SuperTextPixLen(len, name.c_str(), iFont);
     Render::TranslateScreenCoords(ix, iy, w, 18);
-    SuperPrint(len, name.c_str(), font, ix, iy);
+    SuperPrint(len, name.c_str(), iFont, ix, iy);
 }
 
-static void showLevelFile(double x, double y, int font)
+static void showLevelFile(double x, double y, double font)
 {
-    if(font < 1 || font > 5)
-        font = 3;
+    int iFont = static_cast<int>(font);
+    if(iFont < 1 || iFont > 5)
+        iFont = 3;
     if(FileName.empty())
         return;
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(FileName.size());
-    int w = SuperTextPixLen(len, FileName.c_str(), font);
+    int w = SuperTextPixLen(len, FileName.c_str(), iFont);
     Render::TranslateScreenCoords(ix, iy, w, 18);
-    SuperPrint(len, FileName.c_str(), font, ix, iy);
+    SuperPrint(len, FileName.c_str(), iFont, ix, iy);
 }
 
-static void showImage(int imgResourceCode, double x, double y,
+static void showImage(double imgResourceCode, double x, double y,
     double sx, double sy, double sw, double sh)
 {
-    if(imgResourceCode == 0)
+    int code = static_cast<int>(imgResourceCode);
+    if(code == 0)
         return;
 
-    auto *img = Renderer::Get().GetImageForResourceCode(imgResourceCode);
-    if(!img)
+    auto it = s_hudTextures.find(code);
+    if(it == s_hudTextures.end() || !it->second.inited)
         return;
+
+    StdPicture &tex = it->second;
 
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
@@ -719,24 +744,19 @@ static void showImage(int imgResourceCode, double x, double y,
     int isw = static_cast<int>(sw);
     int ish = static_cast<int>(sh);
 
-    // If no source size specified, use full image
-    if(isw <= 0) isw = img->getW();
-    if(ish <= 0) ish = img->getH();
+    if(isw <= 0) isw = tex.w;
+    if(ish <= 0) ish = tex.h;
+    if(isw <= 0 || ish <= 0)
+        return;
 
-    // Adjust for non-800x600 resolutions
-    Render::TranslateScreenCoords(ix, iy, isw, ish);
+    HudRenderImage(ix, iy, isw, ish, tex, isx, isy);
+}
 
-    auto *op = new RenderBitmapOp();
-    op->m_FramesLeft = 1;
-    op->x = ix;
-    op->y = iy;
-    op->sx = isx;
-    op->sy = isy;
-    op->sw = isw;
-    op->sh = ish;
-    op->direct_img = img;
-
-    Renderer::Get().AddOp(op);
+static void showNPC(double npcId, double x, double y, double w, double h)
+{
+    HudRenderNPC(static_cast<int>(npcId),
+        static_cast<int>(x), static_cast<int>(y),
+        static_cast<int>(w), static_cast<int>(h));
 }
 
 static void debugPrint(const std::string &text)
@@ -1234,6 +1254,30 @@ static int sysval_getCheckpointId(int index)
     return CheckpointsList[size_t(index) - 1].id;
 }
 
+
+static std::string sysval_getLevelName()
+{
+    return LevelName.empty() ? FileName : LevelName;
+}
+
+
+static int misc_getStrWidth(const std::string &text, double font)
+{
+    int iFont = static_cast<int>(font);
+    if(iFont < 1 || iFont > 5)
+        iFont = 3;
+    if(text.empty())
+        return 0;
+    return SuperTextPixLen(text, iFont);
+}
+
+static int misc_getStrWidth(const std::string &text)
+{
+    return misc_getStrWidth(text, 3.0);
+}
+
+
+
 // ============================================================================
 // Async/Delay support (P3: named timers)
 
@@ -1407,39 +1451,88 @@ void xtech_lua_clear_delayed_calls()
 namespace LuaSprite
 {
 
-static void loadImage(const std::string &filename, int resourceCode, uint32_t transColor)
+// Resolve an image path for HUD use (level custom dir first, then episode dir)
+static std::string resolveHudImagePath(const std::string &filename)
 {
-    std::string fullPath = g_dirCustom.resolveFileCaseAbs(filename);
-    if(!fullPath.empty())
-        Renderer::Get().LoadBitmapResource(fullPath, resourceCode, transColor);
+    std::string path = AutocodeManager::resolveCustomFileCase(filename);
+    if(!path.empty())
+        return path;
+    return AutocodeManager::resolveWorldFileCase(filename);
 }
 
-static void loadImageSimple(const std::string &filename, int resourceCode)
+static void loadImage(const std::string &filename, double resourceCode, uint32_t transColor)
 {
-    std::string fullPath = g_dirCustom.resolveFileCaseAbs(filename);
-    if(!fullPath.empty())
-        Renderer::Get().LoadBitmapResource(fullPath, resourceCode);
+    int code = static_cast<int>(resourceCode);
+    if(code == 0)
+        return;
+
+    // Load via game's native system for showImage
+    std::string path = resolveHudImagePath(filename);
+    if(!path.empty())
+    {
+        auto it = s_hudTextures.find(code);
+        if(it != s_hudTextures.end())
+            it->second.reset();
+        XRender::LoadPicture(s_hudTextures[code], path);
+        // Apply transparent color for BMP/JPG (PNG uses alpha channel)
+        if(Files::hasSuffix(path, ".jpg") || Files::hasSuffix(path, ".bmp"))
+            XRender::setTransparentColor(s_hudTextures[code], transColor);
+    }
+
+    // Also load via LunaRender for backward compat (sprites etc.)
+    Renderer::Get().LoadBitmapResource(filename, code, transColor);
 }
 
-static LunaImage* getImage(int resourceCode)
+static void loadImageSimple(const std::string &filename, double resourceCode)
 {
-    return Renderer::Get().GetImageForResourceCode(resourceCode);
+    int code = static_cast<int>(resourceCode);
+    if(code == 0)
+        return;
+
+    // Load via game's native system for showImage
+    std::string path = resolveHudImagePath(filename);
+    if(!path.empty())
+    {
+        auto it = s_hudTextures.find(code);
+        if(it != s_hudTextures.end())
+            it->second.reset();
+        XRender::LoadPicture(s_hudTextures[code], path);
+    }
+
+    // Also load via LunaRender for backward compat (sprites etc.)
+    Renderer::Get().LoadBitmapResource(filename, code);
 }
 
-static bool deleteImage(int resourceCode)
+static LunaImage* getImage(double resourceCode)
 {
-    return Renderer::Get().DeleteImage(resourceCode);
+    return Renderer::Get().GetImageForResourceCode(static_cast<int>(resourceCode));
+}
+
+static bool deleteImage(double resourceCode)
+{
+    int code = static_cast<int>(resourceCode);
+
+    // Clear from HUD texture map
+    auto it = s_hudTextures.find(code);
+    if(it != s_hudTextures.end())
+    {
+        it->second.reset();
+        s_hudTextures.erase(it);
+    }
+
+    // Also clear from LunaRender
+    return Renderer::Get().DeleteImage(code);
 }
 
 // Place a sprite into the world
-static CSprite* placeSprite(int type, int imgResourceCode, int x, int y, int lifetime)
+static CSprite* placeSprite(double type, double imgResourceCode, double x, double y, double lifetime)
 {
     CSpriteRequest req;
-    req.type = type;
-    req.img_resource_code = imgResourceCode;
-    req.x = x;
-    req.y = y;
-    req.time = lifetime;
+    req.type = static_cast<int>(type);
+    req.img_resource_code = static_cast<int>(imgResourceCode);
+    req.x = static_cast<int>(x);
+    req.y = static_cast<int>(y);
+    req.time = static_cast<int>(lifetime);
     gSpriteMan.InstantiateSprite(&req, true);
     // Return the most recently added sprite
     if(!gSpriteMan.m_SpriteList.empty())
@@ -1447,15 +1540,15 @@ static CSprite* placeSprite(int type, int imgResourceCode, int x, int y, int lif
     return nullptr;
 }
 
-static CSprite* placeSpriteExt(int type, int imgResourceCode, int x, int y, int lifetime,
+static CSprite* placeSpriteExt(double type, double imgResourceCode, double x, double y, double lifetime,
     num_t xSpeed, num_t ySpeed, bool spawned)
 {
     CSpriteRequest req;
-    req.type = type;
-    req.img_resource_code = imgResourceCode;
-    req.x = x;
-    req.y = y;
-    req.time = lifetime;
+    req.type = static_cast<int>(type);
+    req.img_resource_code = static_cast<int>(imgResourceCode);
+    req.x = static_cast<int>(x);
+    req.y = static_cast<int>(y);
+    req.time = static_cast<int>(lifetime);
     req.x_speed = xSpeed;
     req.y_speed = ySpeed;
     req.spawned = spawned;
@@ -1475,9 +1568,9 @@ static void clearAllSprites()
     gSpriteMan.ClearAllSprites();
 }
 
-static void clearSpritesByCode(int imgResourceCode)
+static void clearSpritesByCode(double imgResourceCode)
 {
-    gSpriteMan.ClearSprites(imgResourceCode);
+    gSpriteMan.ClearSprites(static_cast<int>(imgResourceCode));
 }
 
 static void addBlueprint(const std::string &name, CSprite *spr)
@@ -2006,6 +2099,7 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_player_isHoldingSpriteType", &LuaPlayer::isHoldingSpriteType),
         def("xtech_player_usesHearts", &LuaPlayer::usesHearts),
         def("xtech_player_memSet", &LuaPlayer::memSet),
+        def("xtech_player_dismount", &LuaPlayer::dismount),
 
         // ================================================================
         // NPC API functions
@@ -2109,6 +2203,7 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_hud_showLevelFile", &LuaHUD::showLevelFile),
         def("xtech_hud_debugPrint", &LuaHUD::debugPrint),
         def("xtech_hud_showImage", &LuaHUD::showImage),
+        def("xtech_hud_showNPC", &LuaHUD::showNPC),
 
         // ================================================================
         // Variable API functions
@@ -2169,6 +2264,9 @@ void xtech_lua_register_bindings(lua_State *L)
         // xtech_timer_create: registered manually (luabind::object param)
         def("xtech_timer_cancel", &LuaMisc::lua_timer_cancel),
         def("xtech_timer_clearAll", &LuaMisc::lua_timer_clearAll),
+        def("xtech_sysval_getLevelName", &LuaMisc::sysval_getLevelName),
+        def("xtech_getStrWidth", (int(*)(const std::string&, double))&LuaMisc::misc_getStrWidth),
+        def("xtech_getStrWidth", (int(*)(const std::string&))&LuaMisc::misc_getStrWidth),
 
         // ================================================================
         // Sprite API functions
@@ -2298,6 +2396,9 @@ void xtech_lua_register_bindings(lua_State *L)
     LUA_INT_CONST("CONST_FT_DWORD", (int)FT_DWORD);
     LUA_INT_CONST("CONST_FT_FLOAT", (int)FT_FLOAT);
     LUA_INT_CONST("CONST_FT_DFLOAT", (int)FT_DFLOAT);
+
+    // Physics constants (P6: exposed for Lua P-meter / speed-based logic)
+    LUA_INT_CONST("CONST_PLAYER_RUN_SPEED", Physics.PlayerRunSpeed);
 
 #undef LUA_INT_CONST
 

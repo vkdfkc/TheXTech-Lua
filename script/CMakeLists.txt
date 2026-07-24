@@ -51,3 +51,8 @@ endif()
 if(THEXTECH_FIXED_POINT)
     target_compile_definitions(XTechLua PRIVATE -DTHEXTECH_FIXED_POINT)
 endif()
+
+# Inherit THEXTECH_BUILD_GL_MODERN from the main build (StdPictureData layout must match)
+if(THEXTECH_BUILD_GL_DESKTOP_MODERN OR THEXTECH_BUILD_GL_ES_MODERN)
+    target_compile_definitions(XTechLua PRIVATE -DTHEXTECH_BUILD_GL_MODERN)
+endif()

@@ -2195,6 +2195,9 @@ struct Physics_t
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerGrabSpotX;
 //    PlayerGrabSpotY(1 To numCharacters, 1 To numStates) As Integer
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerGrabSpotY;
+//    PlayerAccessoryOffsetX/Y - cyclone accessory sprite offset override (customizable per-state via INI)
+    RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryOffsetX;
+    RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryOffsetY;
 //    NPCTimeOffScreen As Integer
     int NPCTimeOffScreen = 0;
 //    NPCCanHurtWait As Integer

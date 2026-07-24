@@ -137,6 +137,14 @@ void initEditorStrings()
     g_editorStrings.testBoot = "Boot";
     g_editorStrings.testPet = "Pet";
 
+    g_editorStrings.gridSnap = "Grid Snap:";
+    g_editorStrings.gridSnap32 = "32x32";
+    g_editorStrings.gridSnap16 = "16x16";
+    g_editorStrings.gridSnap8 = "8x8";
+    g_editorStrings.gridSnap1 = "1x1";
+
+    g_editorStrings.objName = "Name:";
+
     g_editorStrings.eventsHeader = "Events:";
 
     g_editorStrings.eventsLetterActivate = "A:";

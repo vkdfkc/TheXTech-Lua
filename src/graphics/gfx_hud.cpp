@@ -546,3 +546,26 @@ void DrawDeviceBattery()
 
     RenderPowerInfo(-1, bx, by, bw, bh, 255, &status_info);
 }
+
+void HudRenderNPC(int npcId, int x, int y, int w, int h)
+{
+    if(npcId < 1 || npcId > maxNPCType)
+        return;
+
+    if(w <= 0) w = NPCWidthGFX(npcId);
+    if(h <= 0) h = NPCHeightGFX(npcId);
+    if(w <= 0) w = NPCWidth(npcId);
+    if(h <= 0) h = NPCHeight(npcId);
+    if(w <= 0 || h <= 0) return;
+
+    auto &tex = GFXNPC[npcId];
+    XRender::lazyPreLoad(tex);
+    XRender::renderTextureBasic(x, y, w, h, tex, 0, 0);
+}
+
+void HudRenderImage(int x, int y, int w, int h, StdPicture &tex, int sx, int sy)
+{
+    if(!tex.inited || w <= 0 || h <= 0)
+        return;
+    XRender::renderTextureBasic(x, y, w, h, tex, sx, sy);
+}

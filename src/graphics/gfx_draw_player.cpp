@@ -176,9 +176,9 @@ void DrawCycloneAccessory(int Z, const Player_t& p, int cX, int tY, XTColor c)
     if(acc_frame == 3)
         acc_frame = 1;
 
-    // calculate offset for accessory
-    int offsetX = -16;
-    int offsetY = -32;
+    // calculate offset for accessory (base + INI override)
+    int offsetX = -16 + Physics.PlayerAccessoryOffsetX[p.Character][p.State];
+    int offsetY = -32 + Physics.PlayerAccessoryOffsetY[p.Character][p.State];
 
     int extra_offX = 0;
     int extra_offY = 0;

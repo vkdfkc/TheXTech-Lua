@@ -3251,7 +3251,11 @@ void MouseMove(int X, int Y, bool /*nCur*/)
         X += (int)(vScreenX - vScreen[A].X);
         Y += (int)(vScreenY - vScreen[A].Y);
 
-        // 16x16 alignment
+        // user-selected grid snap (default 32)
+        int grid = editorScreen.grid_snap_size;
+        int y_offset = (grid >= 8) ? 8 : 0;
+
+        // 16x16 alignment (hardcoded for objects that require it)
         if(
             (EditorCursor.Mode == OptCursor_t::LVL_BLOCKS &&
             (EditorCursor.Block.Type == 534 || EditorCursor.Block.Type == 535 ||
@@ -3306,10 +3310,10 @@ void MouseMove(int X, int Y, bool /*nCur*/)
             EditorCursor.Location.Y = ((Y + 8) / 16) * 16 - vScreenY - 8;
             PositionCursor();
         }
-        else // Everything also align as 32x32
+        else // everything else — use user-selected grid snap
         {
-            EditorCursor.Location.X = (X / 32) * 32 - vScreenX;
-            EditorCursor.Location.Y = ((Y + 8) / 32) * 32 - vScreenY - 8;
+            EditorCursor.Location.X = (X / grid) * grid - vScreenX;
+            EditorCursor.Location.Y = ((Y + y_offset) / grid) * grid - vScreenY - y_offset;
             PositionCursor();
         }
     }

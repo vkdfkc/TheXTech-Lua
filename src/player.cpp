@@ -1847,7 +1847,7 @@ void PlayerFrame(Player_t &p)
         if(p.Character == 5)
             p.Frame = 11;
         else
-            p.Frame = 26; // Climbing sprite at tile (7,5)
+            p.Frame = 30; // Climbing sprite at tile (7,5)
 
         return;
     }
@@ -3621,15 +3621,18 @@ void YoshiPound(const int A, int mount, bool BreakBlocks)
     }
 }
 
-void PlayerDismount(const int A)
+void PlayerDismount(const int A, bool silent)
 {
     auto &p = Player[A];
 
     num_t tempSpeed;
-    if(Player[A].Location.SpeedX > 0)
-        tempSpeed = Player[A].Location.SpeedX / 5; // tempSpeed gives the player a height boost when jumping while running, based off their SpeedX
-    else
-        tempSpeed = -Player[A].Location.SpeedX / 5;
+    if(!silent)
+    {
+        if(Player[A].Location.SpeedX > 0)
+            tempSpeed = Player[A].Location.SpeedX / 5; // tempSpeed gives the player a height boost when jumping while running, based off their SpeedX
+        else
+            tempSpeed = -Player[A].Location.SpeedX / 5;
+    }
 
     // jump out of boot
     if(Player[A].Mount == 1)
@@ -3638,14 +3641,17 @@ void PlayerDismount(const int A)
         if(Player[A].Wet <= 0 || Player[A].Quicksand != 0)
             UnDuck(Player[A]);
         Player[A].CanJump = false;
-        PlaySoundSpatial(SFX_Jump, p.Location); // Jump sound
-        PlaySoundSpatial(SFX_Boot, p.Location);
-        Player[A].Location.SpeedY = Physics.PlayerJumpVelocity - tempSpeed;
-        Player[A].Jump = Physics.PlayerJumpHeight;
-        if(Player[A].Character == 2)
-            Player[A].Jump += 3;
-        if(Player[A].SpinJump)
-            Player[A].Jump -= 6;
+        if(!silent)
+        {
+            PlaySoundSpatial(SFX_Jump, p.Location); // Jump sound
+            PlaySoundSpatial(SFX_Boot, p.Location);
+            Player[A].Location.SpeedY = Physics.PlayerJumpVelocity - tempSpeed;
+            Player[A].Jump = Physics.PlayerJumpHeight;
+            if(Player[A].Character == 2)
+                Player[A].Jump += 3;
+            if(Player[A].SpinJump)
+                Player[A].Jump -= 6;
+        }
         Player[A].Mount = 0;
         Player[A].StandingOnNPC = 0;
         numNPCs++;
@@ -3687,18 +3693,22 @@ void PlayerDismount(const int A)
     else if(Player[A].Mount == 2)
     {
         Player[A].CanJump = false;
-        PlaySoundSpatial(SFX_Jump, p.Location); // Jump sound
-        PlaySoundSpatial(SFX_Boot, p.Location);
-        Player[A].Jump = Physics.PlayerJumpHeight;
-        if(Player[A].Character == 2)
-            Player[A].Jump = Player[A].Jump + 3;
-        if(Player[A].SpinJump)
-            Player[A].Jump = Player[A].Jump - 6;
+        if(!silent)
+        {
+            PlaySoundSpatial(SFX_Jump, p.Location); // Jump sound
+            PlaySoundSpatial(SFX_Boot, p.Location);
+            Player[A].Jump = Physics.PlayerJumpHeight;
+            if(Player[A].Character == 2)
+                Player[A].Jump = Player[A].Jump + 3;
+            if(Player[A].SpinJump)
+                Player[A].Jump = Player[A].Jump - 6;
+        }
         Player[A].Mount = 0;
 
         s_makeVehicleMount(A);
 
-        Player[A].Location.SpeedY = Physics.PlayerJumpVelocity - tempSpeed;
+        if(!silent)
+            Player[A].Location.SpeedY = Physics.PlayerJumpVelocity - tempSpeed;
         Player[A].Location.Height = Physics.PlayerHeight[Player[A].Character][Player[A].State];
         Player[A].Location.Width = Physics.PlayerWidth[Player[A].Character][Player[A].State];
         Player[A].Location.X = Player[A].Location.X + 64 - Physics.PlayerWidth[Player[A].Character][Player[A].State] / 2;
@@ -3763,7 +3773,7 @@ void PlayerDismount(const int A)
 
         Player[A].Location.Height = Physics.PlayerHeight[Player[A].Character][Player[A].State];
         // if not swimming
-        if(Player[A].Wet <= 0 || Player[A].Quicksand != 0)
+        if(!silent && (Player[A].Wet <= 0 || Player[A].Quicksand != 0))
         {
             PlaySoundSpatial(SFX_Jump, p.Location); // Jump sound
             Player[A].Location.SpeedY = Physics.PlayerJumpVelocity - tempSpeed;

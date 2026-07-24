@@ -59,8 +59,8 @@ static inline void NPCEffectLogic_EmergeUp(int A)
             NPC[A].Location.set_height_floor(NPC[A]->THeight);
             // Recover layer to default while hit animation finished.
             switch (NPC[A].Type) {
-                case NPCID_ITEMGOAL: 
-                case NPCID_GOALORB_S3: 
+                case NPCID_ITEMGOAL:
+                case NPCID_GOALORB_S3:
                 case NPCID_STAR_EXIT:
                 case NPCID_GOALTAPE:
                 case NPCID_FLAG_EXIT:
@@ -78,8 +78,8 @@ static inline void NPCEffectLogic_EmergeUp(int A)
             NPC[A].Location.Height = NPC[A]->THeight;
             // Recover layer to default while hit animation finished.
             switch (NPC[A].Type) {
-                case NPCID_ITEMGOAL: 
-                case NPCID_GOALORB_S3: 
+                case NPCID_ITEMGOAL:
+                case NPCID_GOALORB_S3:
                 case NPCID_STAR_EXIT:
                 case NPCID_GOALTAPE:
                 case NPCID_FLAG_EXIT:

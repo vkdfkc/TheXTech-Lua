@@ -255,6 +255,8 @@ public:
     bool active = true;
     int num_test_players = 1;
     bool test_magic_hand = false;
+    // 0=32x32, 1=16x16, 2=8x8, 3=1x1
+    int grid_snap_size = 32;
 
     void UpdateEditorScreen(CallMode mode, bool second_screen = false);
     void UpdateSelectorBar(CallMode mode, bool select_bar_only = false);

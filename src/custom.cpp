@@ -274,6 +274,12 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
     hitBoxFile.read("grab-offset-x", grab_offset_x, UNDEFINED);
     hitBoxFile.read("grab-offset-y", grab_offset_y, UNDEFINED);
 
+    // accessory (cyclone propeller) offsets
+    short acc_offset_x = UNDEFINED;
+    short acc_offset_y = UNDEFINED;
+    hitBoxFile.read("accessory-offset-x", acc_offset_x, UNDEFINED);
+    hitBoxFile.read("accessory-offset-y", acc_offset_y, UNDEFINED);
+
     hitBoxFile.endGroup();
 
     for(int x = 0; x < 10; x++)
@@ -316,6 +322,10 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
         Physics.PlayerGrabSpotX[character][state] = grab_offset_x;
     if(grab_offset_y != UNDEFINED)
         Physics.PlayerGrabSpotY[character][state] = grab_offset_y;
+    if(acc_offset_x != UNDEFINED)
+        Physics.PlayerAccessoryOffsetX[character][state] = acc_offset_x;
+    if(acc_offset_y != UNDEFINED)
+        Physics.PlayerAccessoryOffsetY[character][state] = acc_offset_y;
 }
 
 void FindCustomNPCs(/*std::string cFilePath*/)

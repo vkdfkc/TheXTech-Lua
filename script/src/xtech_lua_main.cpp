@@ -86,6 +86,10 @@ static void safeCallLuaFunc(luabind::object &func, const char *funcName)
     {
         pLogWarning("Lua exception in %s: %s", funcName, e.what());
     }
+    catch(...)
+    {
+        pLogWarning("Lua unknown exception in %s", funcName);
+    }
 }
 
 template<typename... Args>
@@ -107,6 +111,10 @@ static void safeCallLuaFuncWith(luabind::object &func, const char *funcName, Arg
     catch(const std::exception &e)
     {
         pLogWarning("Lua exception in %s: %s", funcName, e.what());
+    }
+    catch(...)
+    {
+        pLogWarning("Lua unknown exception in %s", funcName);
     }
 }
 

@@ -830,7 +830,7 @@ void EditorScreen::UpdateNPCScreen(CallMode mode)
         // NPC Name (below text, before wings)
         {
             const std::string& name = GetS(EditorCursor.NPC.Name);
-            SuperPrintRightR(mode, "Name:", 3, e_ScreenW - 130 + 15, 274 + 190);
+            SuperPrintRightR(mode, g_editorStrings.objName, 3, e_ScreenW - 130 + 15, 274 + 190);
             if(!name.empty())
                 SuperPrintRightR(mode, name, 3, e_ScreenW - 40, 294 + 190);
             else
@@ -2179,6 +2179,25 @@ void EditorScreen::UpdateEditorSettingsScreen(CallMode mode)
 
     if(WorldEditor || MagicHand)
         return;
+
+    // grid snap settings
+    SuperPrintR(mode, g_editorStrings.gridSnap, 3, 46, 136);
+
+    if(UpdateButton(mode, 4, 30 + 4 + 96 + 32, GFX.EIcons, grid_snap_size == 32, 0, 32*Icon::subscreen, 32, 32))
+        grid_snap_size = 32;
+    SuperPrintR(mode, g_editorStrings.gridSnap32, 3, 50, 72 + 96);
+
+    if(UpdateButton(mode, 4, 64 + 4 + 96 + 32, GFX.EIcons, grid_snap_size == 16, 0, 32*Icon::subscreen, 32, 32))
+        grid_snap_size = 16;
+    SuperPrintR(mode, g_editorStrings.gridSnap16, 3, 50, 106 + 96);
+
+    if(UpdateButton(mode, 4, 98 + 4 + 96 + 32, GFX.EIcons, grid_snap_size == 8, 0, 32*Icon::subscreen, 32, 32))
+        grid_snap_size = 8;
+    SuperPrintR(mode, g_editorStrings.gridSnap8, 3, 50, 140 + 96);
+
+    if(UpdateButton(mode, 4, 132 + 4 + 96 + 32, GFX.EIcons, grid_snap_size == 1, 0, 32*Icon::subscreen, 32, 32))
+        grid_snap_size = 1;
+    SuperPrintR(mode, g_editorStrings.gridSnap1, 3, 50, 174 + 96);
 
     // level test settings
 
@@ -3667,7 +3686,7 @@ void EditorScreen::UpdateBlockScreen(CallMode mode)
     // Block Name
     {
         const std::string& name = GetS(EditorCursor.Block.Name);
-        SuperPrintRightR(mode, "Name:", 3, e_ScreenW - 75, 154);
+        SuperPrintRightR(mode, g_editorStrings.objName, 3, e_ScreenW - 75, 154);
         if(!name.empty())
             SuperPrintRightR(mode, name, 3, e_ScreenW - 40, 174);
         else
