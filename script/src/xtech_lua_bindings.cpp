@@ -688,8 +688,6 @@ static void showText(const std::string &text, double x, double y, double font)
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(text.size());
-    int w = SuperTextPixLen(len, text.c_str(), iFont);
-    Render::TranslateScreenCoords(ix, iy, w, 18);
     SuperPrint(len, text.c_str(), iFont, ix, iy);
 }
 
@@ -704,8 +702,6 @@ static void showLevelName(double x, double y, double font)
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(name.size());
-    int w = SuperTextPixLen(len, name.c_str(), iFont);
-    Render::TranslateScreenCoords(ix, iy, w, 18);
     SuperPrint(len, name.c_str(), iFont, ix, iy);
 }
 
@@ -719,8 +715,6 @@ static void showLevelFile(double x, double y, double font)
     int ix = static_cast<int>(x);
     int iy = static_cast<int>(y);
     int len = static_cast<int>(FileName.size());
-    int w = SuperTextPixLen(len, FileName.c_str(), iFont);
-    Render::TranslateScreenCoords(ix, iy, w, 18);
     SuperPrint(len, FileName.c_str(), iFont, ix, iy);
 }
 

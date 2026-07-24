@@ -3139,8 +3139,8 @@ void InteractResizeSection(IntegerLocation_t& section)
     if(EditorCursor.InteractFlags & IF_ResizeT)
     {
         int new_Y = num_t::round(EditorCursor.Location.Y / 32) * 32;
-        if(section.Height - new_Y < 600)
-            new_Y = section.Height - 600;
+        if(section.Height - new_Y < 320)
+            new_Y = section.Height - 320;
 
         if(new_Y != section.Y)
         {
@@ -3152,8 +3152,8 @@ void InteractResizeSection(IntegerLocation_t& section)
     if(EditorCursor.InteractFlags & IF_ResizeL)
     {
         int new_X = num_t::round(EditorCursor.Location.X / 32) * 32;
-        if(section.Width - new_X < 800)
-            new_X = section.Width - 800;
+        if(section.Width - new_X < 480)
+            new_X = section.Width - 480;
 
         if(new_X != section.X)
         {
@@ -3165,8 +3165,8 @@ void InteractResizeSection(IntegerLocation_t& section)
     if(EditorCursor.InteractFlags & IF_ResizeR)
     {
         int new_Width = num_t::round(EditorCursor.Location.X / 32) * 32;
-        if(new_Width - section.X < 800)
-            new_Width = section.X + 800;
+        if(new_Width - section.X < 480)
+            new_Width = section.X + 480;
 
         if(new_Width != section.Width)
         {
@@ -3178,8 +3178,8 @@ void InteractResizeSection(IntegerLocation_t& section)
     if(EditorCursor.InteractFlags & IF_ResizeB)
     {
         int new_Height = num_t::round(EditorCursor.Location.Y / 32) * 32;
-        if(new_Height - section.Y < 600)
-            new_Height = section.Y + 600;
+        if(new_Height - section.Y < 320)
+            new_Height = section.Y + 320;
 
         if(new_Height != section.Height)
         {
