@@ -99,6 +99,7 @@ function onRenderEnd()                   -- 每帧渲染后
 function onRender(Z)                     -- 每层渲染（Z=屏幕层号）
 function onRenderHud(Z, numScreens)      -- HUD 渲染
 function onLevelComplete()               -- 关卡通关时触发
+function onLevelExit()                   -- 关卡退出时触发（死亡、完成、手动退出都触发）
 
 -- === 事件钩子（关卡脚本中定义，见第 8 章） ===
 function onNPCDeath(permid, npcId, killer)
@@ -1237,7 +1238,7 @@ end
 ```
 
 #### onLevelExit()
-**触发时机：** 关卡退出时（返回世界地图/菜单）。（等价于全局钩子 `onLoopEnd`）
+**触发时机：** 关卡退出时（死亡、完成、手动退出均触发）。在 `xtech_lua_unloadLevel()` 中调用，早于函数引用清理。
 **参数：** 无
 
 #### onGameOver()

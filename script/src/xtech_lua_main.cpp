@@ -425,6 +425,19 @@ void xtech_lua_unloadLevel()
     if(!g_luaInitialized || !g_L)
         return;
 
+    // Fire onLevelExit before tearing down (death, completion, quit all go through here)
+    xtech_lua_getFunc("onLevelExit");
+    if(lua_isfunction(g_L, -1))
+    {
+        if(lua_pcall(g_L, 0, 0, 0) != 0)
+        {
+            pLogWarning("Lua: Error in onLevelExit: %s", lua_tostring(g_L, -1));
+            lua_pop(g_L, 1);
+        }
+    }
+    else
+        lua_pop(g_L, 1);
+
     // Clear async delayed calls
     xtech_lua_clear_delayed_calls();
 
