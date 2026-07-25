@@ -1054,4 +1054,7 @@ extern Config_t g_config_file_creator;    // 6
 
 extern Config_t g_config;
 
+// Helper: set a config option by internal name + string value (handles enum key lookup)
+void config_set_by_name_str(const std::string &name, const std::string &value);
+
 #endif // CONFIG_MAIN_H

@@ -455,4 +455,22 @@ Config_t g_config_file_creator(g_options, Config_t::Scope::CreatorFile);       /
 //     &g_config_cmdline
 // };
 
+void config_set_by_name_str(const std::string &name, const std::string &value)
+{
+    for(BaseConfigOption_t<true>* option : g_config.m_options)
+    {
+        if(!option->m_base || !option->m_base->m_internal_name)
+            continue;
+        if(name != option->m_base->m_internal_name)
+            continue;
+
+        IniProcessing tmpIni;
+        tmpIni.beginGroup("temp");
+        tmpIni.setValue(option->m_base->m_internal_name, value);
+        tmpIni.endGroup();
+        option->update_from_ini(&tmpIni, ConfigSetLevel::ep_compat);
+        return;
+    }
+}
+
 Config_t g_config(g_options, Config_t::Scope::All);

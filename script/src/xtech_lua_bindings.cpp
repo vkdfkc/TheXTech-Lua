@@ -1273,6 +1273,150 @@ static int misc_getStrWidth(const std::string &text)
     return misc_getStrWidth(text, 3.0);
 }
 
+// ============================================================================
+// Dynamic config access (Lua can read/write g_config options by internal name)
+static luabind::object misc_getConfig(const std::string &name)
+{
+    lua_State* L = xtech_lua_getState();
+    for(BaseConfigOption_t<true>* option : g_config.m_options)
+    {
+        if(!option->m_base || !option->m_base->m_internal_name)
+            continue;
+        if(name != option->m_base->m_internal_name)
+            continue;
+
+        // Try bool
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, bool>*>(option))
+            return luabind::object(L, opt->m_value);
+        // Try int
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, int>*>(option))
+            return luabind::object(L, static_cast<double>(opt->m_value));
+        // Try string
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, std::string>*>(option))
+            return luabind::object(L, opt->m_value);
+        // Try enum (stored as int)
+        if(auto* opt = dynamic_cast<ConfigEnumOption_t<true, int>*>(option))
+            return luabind::object(L, static_cast<double>(opt->m_value));
+
+        break;
+    }
+    return luabind::object(); // nil
+}
+
+static void misc_setConfig(const std::string &name, double value)
+{
+    for(BaseConfigOption_t<true>* option : g_config.m_options)
+    {
+        if(!option->m_base || !option->m_base->m_internal_name)
+            continue;
+        if(name != option->m_base->m_internal_name)
+            continue;
+
+        // Write directly to avoid linker issues with template operator=
+        // Try bool
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, bool>*>(option))
+        {
+            opt->m_value = (value != 0.0);
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try int
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, int>*>(option))
+        {
+            opt->m_value = static_cast<int>(value);
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try string
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, std::string>*>(option))
+        {
+            opt->m_value = std::to_string(static_cast<int>(value));
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try enum
+        if(auto* opt = dynamic_cast<ConfigEnumOption_t<true, int>*>(option))
+        {
+            opt->m_value = static_cast<int>(value);
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+
+        break;
+    }
+}
+
+// overload: set string config (supports bool, string, int, and enum types)
+static void misc_setConfigStr(const std::string &name, const std::string &value)
+{
+    for(BaseConfigOption_t<true>* option : g_config.m_options)
+    {
+        if(!option->m_base || !option->m_base->m_internal_name)
+            continue;
+        if(name != option->m_base->m_internal_name)
+            continue;
+
+        // Try bool
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, bool>*>(option))
+        {
+            opt->m_value = (value == "1" || value == "true");
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try string
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, std::string>*>(option))
+        {
+            opt->m_value = value;
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try int
+        if(auto* opt = dynamic_cast<ConfigOption_t<true, int>*>(option))
+        {
+            opt->m_value = std::atoi(value.c_str());
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try enum<int>
+        if(auto* opt = dynamic_cast<ConfigEnumOption_t<true, int>*>(option))
+        {
+            opt->m_value = std::atoi(value.c_str());
+            opt->m_set = ConfigSetLevel::ep_compat;
+            opt->_on_change();
+            return;
+        }
+        // Try enum<pair<int,int>> (e.g. internal-res)
+        if(dynamic_cast<ConfigEnumOption_t<true, std::pair<int, int>>*>(option))
+        {
+            // try numeric "WxH" format first
+            int w = 0, h = 0;
+            if(sscanf(value.c_str(), "%dx%d", &w, &h) == 2)
+            {
+                if(auto* opt = dynamic_cast<ConfigEnumOption_t<true, std::pair<int, int>>*>(option))
+                {
+                    opt->m_value = {w, h};
+                    opt->m_set = ConfigSetLevel::ep_compat;
+                    opt->_on_change();
+                }
+            }
+            else
+            {
+                // use config helper for string key matching (e.g. "svga", "hd1080p")
+                config_set_by_name_str(name, value);
+            }
+            return;
+        }
+
+        break;
+    }
+}
 
 
 // ============================================================================
@@ -2313,6 +2457,9 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_misc_showMsgWarn", &LuaMisc::showMsgWarn),
         def("xtech_misc_cheat", &LuaMisc::cheat),
         def("xtech_misc_log", &LuaMisc::logMsg),
+        def("xtech_misc_getConfig", &LuaMisc::misc_getConfig),
+        def("xtech_misc_setConfig", &LuaMisc::misc_setConfig),
+        def("xtech_misc_setConfigStr", &LuaMisc::misc_setConfigStr),
         def("xtech_misc_logWarn", &LuaMisc::logWarn),
         def("xtech_misc_logDebug", &LuaMisc::logDebug),
         // xtech_misc_wait: registered manually (luabind::object param)
