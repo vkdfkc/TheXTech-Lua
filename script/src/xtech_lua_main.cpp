@@ -295,11 +295,16 @@ void xtech_lua_loadGame()
         return;
     if(g_gameLoaded)
         return;
-    g_gameLoaded = true;
 
     std::string gamePath = g_dirEpisode.resolveFileCaseExistsAbs("game.lua");
     if(!gamePath.empty())
-        loadAndRunLuaFile(gamePath, "game.lua");
+    {
+        pLogInfo("Lua: Loading game.lua from: %s", gamePath.c_str());
+        if(loadAndRunLuaFile(gamePath, "game.lua"))
+            g_gameLoaded = true;  // only mark loaded if successful
+    }
+    else
+        pLogInfo("Lua: No game.lua found in episode directory, will retry later");
 }
 
 
