@@ -83,9 +83,10 @@ static int sandbox_newindex(lua_State* L)
     }
 
     // All other writes stay in the sandbox: sandbox[key] = value
+    // Use rawset to avoid re-triggering __newindex (would cause stack overflow!)
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
-    lua_settable(L, 1);
+    lua_rawset(L, 1);
     return 0;
 }
 
@@ -274,8 +275,8 @@ void xtech_lua_loadGame()
         return;
     g_gameLoaded = true;
 
-    std::string gamePath = AppPathManager::assetsRoot() + "game.lua";
-    if(Files::fileExists(gamePath))
+    std::string gamePath = g_dirEpisode.resolveFileCaseExistsAbs("game.lua");
+    if(!gamePath.empty())
         loadAndRunLuaFile(gamePath, "game.lua");
 }
 
@@ -499,6 +500,7 @@ void xtech_lua_callGameLoad()
 // Complete save cycle: call OnGameSave, serialize to JSON, write file
 bool xtech_lua_gameSave(const std::string& dataPath)
 {
+    xtech_lua_loadGame();  // ensure game.lua loaded
     xtech_lua_callGameSave();
 
     if(!g_L || !lua_istable(g_L, -1))
@@ -526,6 +528,7 @@ bool xtech_lua_gameSave(const std::string& dataPath)
 bool xtech_lua_gameLoad(const std::string& jsonStr)
 {
     if(!g_L) return false;
+    xtech_lua_loadGame();  // ensure game.lua loaded
 
     if(jsonStr.empty())
     {
@@ -549,6 +552,8 @@ void xtech_lua_worldMapRender()
 {
     if(!g_luaInitialized || !g_L)
         return;
+
+    xtech_lua_loadGame();  // ensure game.lua loaded
 
     lua_getglobal(g_L, "OnWorldMapRender");
     if(lua_isfunction(g_L, -1))
