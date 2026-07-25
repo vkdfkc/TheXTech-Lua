@@ -1844,11 +1844,17 @@ void PlayerFrame(Player_t &p)
     {
         p.Direction = 1;
 
+        // if(p.Mount == 0)
+        // {
         if(p.Character == 5)
             p.Frame = 11;
+        else if ((p.Character == 4) | (p.Character == 3))
+            p.Frame = -6;
         else
             p.Frame = 30; // Climbing sprite at tile (7,5)
-
+        // }else{
+        //     p.Frame = 31;
+        // }
         return;
     }
 
@@ -3767,6 +3773,7 @@ void PlayerDismount(const int A, bool silent)
         Player[A].CanJump = false;
         Player[A].StandingOnNPC = 0;
         Player[A].Mount = 0;
+        Player[A].MountOffsetY = 0;
         UpdateYoshiMusic();
 
         s_makePetMount(A);

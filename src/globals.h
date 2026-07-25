@@ -2198,6 +2198,13 @@ struct Physics_t
 //    PlayerAccessoryOffsetX/Y - cyclone accessory sprite offset override (customizable per-state via INI)
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryOffsetX;
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryOffsetY;
+//    PlayerPropellerClimbOffset - base row for climbing propeller animation (default 3 rows into CycloneAcc.png)
+    RangeArr<RangeArrI<int, 1, numStates, 3>, 1, numCharacters> PlayerPropellerClimbOffset;
+//    PlayerPropellerClimbFrames - number of frames in climbing propeller animation (default 4, set to 3 for normal propeller pattern)
+    RangeArr<RangeArrI<int, 1, numStates, 4>, 1, numCharacters> PlayerPropellerClimbFrames;
+//    PlayerAccessoryClimbOffsetX/Y - additional cyclone accessory offset during climbing frames (25/26)
+    RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryClimbOffsetX;
+    RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryClimbOffsetY;
 //    NPCTimeOffScreen As Integer
     int NPCTimeOffScreen = 0;
 //    NPCCanHurtWait As Integer

@@ -332,7 +332,7 @@ static void dismount(Player_t *p)
     if(!p) return;
     int idx = (int)(p - &Player[1]) + 1; // 1-based player index
     if(idx >= 1 && idx <= numPlayers)
-        ::PlayerDismount(idx, true);  // silent: no jump velocity, no sound
+        ::PlayerDismount(idx, false);  // silent: no jump velocity, no sound
 }
 
 } // namespace LuaPlayer

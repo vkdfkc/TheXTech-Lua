@@ -277,7 +277,11 @@ void DrawCycloneAccessory(int Z, const Player_t& p, int cX, int tY, XTColor c)
     }
     else if(p.Frame == 25 || p.Frame == 26)
     {
-        acc_frame = 3 + (CommonFrame / 8) % 4;
+        int climb_base = Physics.PlayerPropellerClimbOffset[p.Character][p.State];
+        int climb_frames = Physics.PlayerPropellerClimbFrames[p.Character][p.State];
+        if(climb_frames < 1)
+            climb_frames = 4;
+        acc_frame = climb_base + (CommonFrame / 8) % climb_frames;
         offsetY = -2;
 
         if(p.Character == 4)
@@ -287,6 +291,9 @@ void DrawCycloneAccessory(int Z, const Player_t& p, int cX, int tY, XTColor c)
             offsetY = -4;
             offsetX += 4;
         }
+
+        offsetX += Physics.PlayerAccessoryClimbOffsetX[p.Character][p.State];
+        offsetY += Physics.PlayerAccessoryClimbOffsetY[p.Character][p.State];
     }
     else if(p.Frame == 22 || p.Frame == 23)
     {

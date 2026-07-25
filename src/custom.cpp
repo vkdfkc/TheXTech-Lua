@@ -280,6 +280,16 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
     hitBoxFile.read("accessory-offset-x", acc_offset_x, UNDEFINED);
     hitBoxFile.read("accessory-offset-y", acc_offset_y, UNDEFINED);
 
+    // climb propeller animation base row (default 3, use 0 to keep normal propeller during climb)
+    short propeller_climb_offset = UNDEFINED;
+    short propeller_climb_frames = UNDEFINED;
+    short acc_climb_offset_x = UNDEFINED;
+    short acc_climb_offset_y = UNDEFINED;
+    hitBoxFile.read("propeller-climb-offset", propeller_climb_offset, UNDEFINED);
+    hitBoxFile.read("propeller-climb-frames", propeller_climb_frames, UNDEFINED);
+    hitBoxFile.read("accessory-climb-offset-x", acc_climb_offset_x, UNDEFINED);
+    hitBoxFile.read("accessory-climb-offset-y", acc_climb_offset_y, UNDEFINED);
+
     hitBoxFile.endGroup();
 
     for(int x = 0; x < 10; x++)
@@ -326,6 +336,14 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
         Physics.PlayerAccessoryOffsetX[character][state] = acc_offset_x;
     if(acc_offset_y != UNDEFINED)
         Physics.PlayerAccessoryOffsetY[character][state] = acc_offset_y;
+    if(propeller_climb_offset != UNDEFINED)
+        Physics.PlayerPropellerClimbOffset[character][state] = propeller_climb_offset;
+    if(propeller_climb_frames != UNDEFINED)
+        Physics.PlayerPropellerClimbFrames[character][state] = propeller_climb_frames;
+    if(acc_climb_offset_x != UNDEFINED)
+        Physics.PlayerAccessoryClimbOffsetX[character][state] = acc_climb_offset_x;
+    if(acc_climb_offset_y != UNDEFINED)
+        Physics.PlayerAccessoryClimbOffsetY[character][state] = acc_climb_offset_y;
 }
 
 void FindCustomNPCs(/*std::string cFilePath*/)
