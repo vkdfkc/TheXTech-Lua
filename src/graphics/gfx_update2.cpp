@@ -42,6 +42,9 @@
 #include "main/level_medals.h"
 #include "../core/render.h"
 #include "../screen_fader.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_main.h"
+#endif
 #include "message.h"
 
 #include "graphics/gfx_frame.h"
@@ -524,6 +527,10 @@ void UpdateGraphics2(bool skipRepaint)
 
 
         XRender::setDrawPlane(PLANE_WLD_HUD);
+
+#ifdef ENABLE_XTECH_LUA
+        xtech_lua_worldMapRender();
+#endif
 
         // prepare for player draw
         vScreen[0].X = 0;
