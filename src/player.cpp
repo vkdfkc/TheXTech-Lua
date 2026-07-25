@@ -1088,7 +1088,7 @@ void PlayerHurt(const int A)
                     p.StateNPC = NPCID_NULL;
                     p.Effect = PLREFF_TURN_SMALL;
 
-                    if(p.State > 2 && g_config.alt_powerdown)
+                    if(p.State > 2 && (g_config.alt_powerdown || g_config.simple_powerdown))
                     {
                         p.Effect = (PlayerEffect)(PLREFF_STATE_TO_BIG + p.State);
                         p.Effect2 = 0;
@@ -1857,6 +1857,11 @@ void PlayerFrame(Player_t &p)
         // }else{
         //     p.Frame = 31;
         // }
+
+        // Cancel the Yoshi-riding Y offset built into frame 30's pfrOffY
+        if(p.Frame == 30 && p.Mount == 0)
+            p.MountOffsetY = -PlayerFrameY[p.Character][(p.State * 100) + (p.Frame * p.Direction)];
+
         return;
     }
 
