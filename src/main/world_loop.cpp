@@ -279,11 +279,12 @@ void WorldLoop()
 
     speedRun_tick();
     Integrator::sync();
-    UpdateGraphics2();
 
 #ifdef ENABLE_XTECH_LUA
     xtech_lua_worldMapRender();
 #endif
+
+    UpdateGraphics2();
 
     if(!Controls::Update())
     {
