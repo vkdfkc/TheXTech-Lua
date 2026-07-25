@@ -525,23 +525,36 @@ void xtech_lua_callGameLoad()
     if(!g_luaInitialized || !g_L)
         return;
 
+    // Expect caller pushed a data table: stack = [data_table]
     int topBefore = lua_gettop(g_L);
-
-    lua_getglobal(g_L, "OnGameLoad");
-    int type = lua_type(g_L, -1);
-    pLogInfo("Lua: OnGameLoad lookup: stack=%d, type=%d(%s), top=%d",
-        topBefore, type, lua_typename(g_L, type), lua_gettop(g_L));
-
-    if(!lua_isfunction(g_L, -1))
+    if(topBefore < 1)
     {
-        pLogWarning("Lua: OnGameLoad is not a function (type=%s), skipping",
-            lua_typename(g_L, type));
-        lua_pop(g_L, 1);
+        pLogWarning("Lua: OnGameLoad skipped — no data table on stack");
         return;
     }
 
-    // Caller must push data table before calling this
-    // OnGameLoad(table)
+    // Move the table to a known position: use registry ref
+    int tableRef = luaL_ref(g_L, LUA_REGISTRYINDEX); // pop table, store ref
+    // stack is now clean
+
+    lua_getglobal(g_L, "OnGameLoad");
+    int type = lua_type(g_L, -1);
+    pLogInfo("Lua: OnGameLoad lookup: type=%d(%s), top=%d",
+        type, lua_typename(g_L, type), lua_gettop(g_L));
+
+    if(type != LUA_TFUNCTION)
+    {
+        pLogWarning("Lua: OnGameLoad not found (type=%s)", lua_typename(g_L, type));
+        lua_pop(g_L, 1);
+        luaL_unref(g_L, LUA_REGISTRYINDEX, tableRef);
+        return;
+    }
+
+    // Push table as argument
+    lua_rawgeti(g_L, LUA_REGISTRYINDEX, tableRef); // [func][table]
+    luaL_unref(g_L, LUA_REGISTRYINDEX, tableRef);  // release registry ref
+
+    // Call: func(table)
     if(lua_pcall(g_L, 1, 0, 0) != 0)
     {
         pLogWarning("Lua: Error in OnGameLoad: %s", lua_tostring(g_L, -1));
