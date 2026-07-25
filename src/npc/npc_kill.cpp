@@ -105,8 +105,8 @@ bool KillNPC(int A, int B)
         NPC[A].Killed = 0;
         NPC[A].Damage = 0;
         NPC[A].Immune = 30;
-        NPC[A].Location.X = NPC[A].DefaultLocation.X;
-        NPC[A].Location.Y = NPC[A].DefaultLocation.Y;
+        NPC[A].Location.X = NPC[A].DefaultLocationX;
+        NPC[A].Location.Y = NPC[A].DefaultLocationY;
         NPC[A].Location.SpeedX = 0;
         NPC[A].Location.SpeedY = 0;
         return false;
