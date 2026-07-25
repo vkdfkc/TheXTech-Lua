@@ -58,7 +58,7 @@ static std::set<std::string> s_subscribedEvents;
 static bool s_callLuaFunc(lua_State *L, const char *funcName)
 {
     if(!L) return false;
-    lua_getglobal(L, funcName);
+    xtech_lua_getFunc(funcName);
     if(!lua_isfunction(L, -1))
     {
         lua_pop(L, 1);
@@ -74,7 +74,7 @@ static void s_safeCall(const char *funcName, Args... args)
     if(!L) return;
 
     // Skip if Lua function not defined
-    lua_getglobal(L, funcName);
+    xtech_lua_getFunc(funcName);
     if(!lua_isfunction(L, -1))
     {
         lua_pop(L, 1);

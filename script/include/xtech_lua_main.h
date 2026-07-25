@@ -25,4 +25,8 @@ extern void xtech_lua_renderHud(int screenZ, int numScreens);
 struct lua_State;
 extern lua_State* xtech_lua_getState();
 
+// Look up a Lua function by name — checks level sandbox first, then _G
+// Pushes the function (or nil) onto the stack. Returns true if found.
+extern bool xtech_lua_getFunc(const char* funcName);
+
 #endif // LUA_MAIN_HHH
