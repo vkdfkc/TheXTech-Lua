@@ -355,12 +355,48 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                    NPC[B].Type == NPCID_GHOST_FAST || NPC[B].Type == NPCID_GHOST_S4 || NPC[B].Type == NPCID_BIG_GHOST || NPC[B].Type == NPCID_LAVA_MONSTER || NPC[B].Type == NPCID_LONG_PLANT_UP);
 
                                 bool force_bounce = (dont_hit_spin_bounce | immune_to_spin_bounce);
+                                // NPC immune to spin jumps
+                                if(!NPC[B]->SpinJump && Player[A].SpinJump && Player[A].Mount != 3)
+                                    force_bounce = true;
 
                                 if(Player[A].Mount == 1 || Player[A].Mount == 2 || Player[A].Stoned)
                                     NPCHit(B, 8, A);
                                 else if(!force_bounce && !NPC[B]->CanWalkOn)
                                 {
-                                    if(Player[A].Wet > 0 && (NPC[B]->IsFish || NPC[B].Type == NPCID_SQUID_S3 || NPC[B].Type == NPCID_SQUID_S1))
+                                    // SpinJumpHurt: NPC hurts spin-jumping player
+                                    if(Player[A].SpinJump && NPC[B]->SpinJumpHurt)
+                                    {
+                                        if(n00bCollision(Player[A].Location, NPC[B].Location))
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
+                                    }
+                                    // YoshiHurt: NPC hurts Yoshi rider
+                                    else if(Player[A].Mount == 3 && NPC[B]->YoshiHurt)
+                                    {
+                                        if(n00bCollision(Player[A].Location, NPC[B].Location))
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
+                                    }
+                                    // WaterJumpHurt: NPC hurts player doing water jump
+                                    else if(Player[A].Wet > 0 && NPC[B]->WaterJumpHurt)
+                                    {
+                                        if(n00bCollision(Player[A].Location, NPC[B].Location))
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
+                                    }
+                                    else if(Player[A].Wet > 0 && (NPC[B]->IsFish || NPC[B].Type == NPCID_SQUID_S3 || NPC[B].Type == NPCID_SQUID_S1))
                                     {
                                     }
                                     else
@@ -557,7 +593,12 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
 
                                         // the n00bcollision function reduces the size of the npc's hit box before it damages the player
                                         if(n00bCollision(Player[A].Location, NPC[B].Location))
-                                            PlayerHurt(A);
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
                                     }
                                 }
                                 else if(NPC[B].Type == NPCID_MINIBOSS) // Special code for BOOM BOOM
@@ -572,7 +613,12 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                     else if(NPC[B].Special != 4)
                                     {
                                         if(n00bCollision(Player[A].Location, NPC[B].Location))
-                                            PlayerHurt(A);
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
                                     }
                                 }
                                 else if((NPC[B].Type == NPCID_LIT_BOMB_S3) || NPC[B].Type == NPCID_HIT_CARRY_FODDER)
@@ -630,7 +676,7 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                             // grab from side
                             if(
                                 ((Player[A].CanGrabNPCs || NPC[B]->IsGrabbable || (NPC[B].Effect == NPCEFF_DROP_ITEM && !NPC[B]->IsABonus)) && (NPC[B].Effect == NPCEFF_NORMAL || NPC[B].Effect == NPCEFF_DROP_ITEM || NPC[B].Effect == NPCEFF_MAZE)) ||
-                                 (NPC[B]->IsAShell && FreezeNPCs)
+                                 ((NPC[B]->IsAShell || NPC[B]->Pushable) && FreezeNPCs)
                             ) // GRAB EVERYTHING
                             {
                                 if(Player[A].Controls.Run && !Player[A].Rolling)
@@ -721,7 +767,12 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                     if(NPC[B].CantHurtPlayer != A && !FreezeNPCs && NPC[B].Type != NPCID_FLIPPED_RAINBOW_SHELL)
                                     {
                                         if(n00bCollision(Player[A].Location, NPC[B].Location))
-                                            PlayerHurt(A);
+                                        {
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
+                                        }
                                     }
                                 }
                             }
@@ -781,7 +832,10 @@ void PlayerNPCLogic(int A, bool& tempSpring, bool& tempShell, int& MessageNPC, c
                                         {
                                             if(BattleMode && NPC[B].HoldingPlayer != A && NPC[B].HoldingPlayer > 0 && Player[A].Immune == 0)
                                                 NPCHit(B, 5, B);
-                                            PlayerHurt(A);
+                                            if(NPC[B]->InstantKill)
+                                                KillPlayer(A);
+                                            else
+                                                PlayerHurt(A);
                                         }
                                     }
                                     else

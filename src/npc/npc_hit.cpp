@@ -205,6 +205,26 @@ void NPCHit(int A, int B, int C)
     StopHit += 1;
     if(NPC[A].Killed > 0)
         return;
+
+    // TurboWeak: turbo dash deals shell-level damage to this NPC
+    if(NPC[A]->TurboWeak && B == 1)
+    {
+        if(C > 0 && C <= numPlayers)
+        {
+            if(Player[C].Location.SpeedX > 3 || Player[C].Location.SpeedX < -3
+                || Player[C].Slide || Player[C].Rolling)
+                B = 3;
+        }
+    }
+
+    // GroundpoundBreak: ground pound / boot stomp always kills this NPC
+    if(NPC[A]->GroundpoundBreak && (B == 8))
+    {
+        NPC[A].Killed = B;
+        NPCQueues::Killed.push_back(A);
+        return;
+    }
+
     if(B == 3 || B == 4)
     {
         if(NPC[C].Generator)
@@ -217,11 +237,38 @@ void NPCHit(int A, int B, int C)
     }
     if(NPC[A].Inert || StopHit > 2 || NPC[A].Immune > 0 || NPC[A].Effect == NPCEFF_ENCASED || NPC[A].Generator)
         return;
+    // New trait-based immunities (SMBX-38A compatible)
+    if(B == 2 && NPC[A]->NoBlockHit)    // immune to block hits
+        return;
+    if(B == 6 && NPC[A]->NoLava)        // immune to lava
+        return;
+    if(B == 7 && NPC[A]->NoLeaf)        // immune to leaf/tanooki tail
+        return;
+
     if(B == 3 || B == 4 || B == 5) // Things immune to fire
     {
         if(NPC[C].Type == NPCID_PLR_FIREBALL)
         {
             if(NPC[A]->NoFireBall)
+                return;
+        }
+        // immune to hammers/axes
+        if((NPC[C].Type == NPCID_HEAVY_THROWN || NPC[C].Type == NPCID_PLR_HEAVY || NPC[C].Type == NPCID_AXE))
+        {
+            if(NPC[A]->NoHammer)
+                return;
+        }
+        // immune to thrown shells
+        if(NPC[C]->IsAShell)
+        {
+            if(NPC[A]->NoShell)
+                return;
+        }
+        // immune to piercing damage (shells, heavy projectiles that pierce through)
+        if(NPC[C]->IsAShell || NPC[C].Type == NPCID_HEAVY_THROWN
+            || NPC[C].Type == NPCID_PLR_HEAVY || NPC[C].Type == NPCID_AXE)
+        {
+            if(NPC[A]->NoPiercingDmg)
                 return;
         }
     }
@@ -2278,7 +2325,8 @@ void NPCHit(int A, int B, int C)
         NPC[A].Killed = 0;
         if(!NPC[A].Immune)
             NPC[A].Immune = 4;
-        NPC[A].Wings = WING_NONE;
+        if(!NPC[A]->WingsForever)
+            NPC[A].Wings = WING_NONE;
     }
 
     if(NPC[A].Killed == 0 && NPC[A].Location.SpeedX == 0 && oldNPC.Location.SpeedX != 0)

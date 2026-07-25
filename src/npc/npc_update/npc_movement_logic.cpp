@@ -42,7 +42,17 @@ void NPCMovementLogic(int A, tempf_t& speedVar)
     // Default Movement Code
     if(use_default_movement && NPC[A].Type != NPCID_ITEM_BURIED)
     {
-        if(NPC[A].Direction == 0)
+        // Stackable NPCs don't walk - they stay still for stacking
+        if(NPC[A]->Stackable)
+        {
+            if(NPC[A].Location.SpeedX > 0)
+                NPC[A].Location.SpeedX -= 0.03_n;
+            else if(NPC[A].Location.SpeedX < 0)
+                NPC[A].Location.SpeedX += 0.03_n;
+            if(NPC[A].Location.SpeedX >= -0.03_n && NPC[A].Location.SpeedX <= 0.03_n)
+                NPC[A].Location.SpeedX = 0;
+        }
+        else if(NPC[A].Direction == 0)
         {
             if(iRand(2) == 0)
                 NPC[A].Direction = -1;
@@ -636,6 +646,9 @@ void NPCMovementLogic(int A, tempf_t& speedVar)
 
 void NPCSectionWrap(NPC_t& npc)
 {
+    if(npc->NoSectionWrap)
+        return;
+
     if((LevelWrap[npc.Section] || LevelVWrap[npc.Section]) && npc.Type != NPCID_HEAVY_THROWN && npc.Type != NPCID_PET_FIRE) // Level wraparound
     {
         if(LevelWrap[npc.Section])

@@ -499,6 +499,8 @@ void LoadCustomNPC(int A, std::string cFileName)
         traits.CanMeltBlock = npc.canmeltblock;
     if(npc.en_wingsforever)
         traits.WingsForever = npc.wingsforever;
+    if(npc.en_nonpccollision)
+        traits.NoNPCCollision = npc.nonpccollision;
     if(npc.en_frozentime)
         traits.FrozenTime = int16_t(npc.frozentime);
     if(npc.en_yoshitransform)

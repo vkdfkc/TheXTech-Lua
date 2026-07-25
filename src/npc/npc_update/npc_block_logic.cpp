@@ -244,7 +244,7 @@ void NPCBlockLogic(int A, num_t& tempHit, int& tempHitBlock, tempf_t& tempSpeedA
                                             }
                                         }
                                     }
-                                    else if(NPC[A].Type == NPCID_PLR_FIREBALL || NPC[A].Type == NPCID_PLR_ICEBALL || NPC[A].Type == NPCID_PET_FIRE)
+                                    else if(NPC[A].Type == NPCID_PLR_FIREBALL || NPC[A].Type == NPCID_PLR_ICEBALL || NPC[A].Type == NPCID_PET_FIRE || NPC[A]->CanMeltBlock)
                                     {
                                         if(NPC[A].Type == NPCID_PLR_FIREBALL || NPC[A].Type == NPCID_PLR_ICEBALL)
                                         {
@@ -269,7 +269,7 @@ void NPCBlockLogic(int A, num_t& tempHit, int& tempHitBlock, tempf_t& tempSpeedA
                                                 HitSpot = 0;
                                         }
 
-                                        if(NPC[A].Type == NPCID_PLR_FIREBALL || NPC[A].Type == NPCID_PET_FIRE)
+                                        if(NPC[A].Type == NPCID_PLR_FIREBALL || NPC[A].Type == NPCID_PET_FIRE || NPC[A]->CanMeltBlock)
                                         {
                                             if(Block[B].Type == 621 || Block[B].Type == 620)
                                             {

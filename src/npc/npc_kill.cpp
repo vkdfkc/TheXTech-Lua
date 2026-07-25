@@ -99,6 +99,19 @@ bool KillNPC(int A, int B)
 
     // don't need to worry about updating NPC A's tree because that will certainly happen in either the syncLayersNPC or the Deactivate call at the end of the procedure
 
+    // Immortal NPCs respawn instead of dying (unless despawned with B=9)
+    if(NPC[A]->Immortal && NPC[A].Killed != 9)
+    {
+        NPC[A].Killed = 0;
+        NPC[A].Damage = 0;
+        NPC[A].Immune = 30;
+        NPC[A].Location.X = NPC[A].DefaultLocation.X;
+        NPC[A].Location.Y = NPC[A].DefaultLocation.Y;
+        NPC[A].Location.SpeedX = 0;
+        NPC[A].Location.SpeedY = 0;
+        return false;
+    }
+
     if(NPC[A].Type == NPCID_ICE_CUBE && NPC[A].Special > 0 && NPC[A].Killed != 9)
     {
         s_makeSparkles(NPC[A], 4, 2);

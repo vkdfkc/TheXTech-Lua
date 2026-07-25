@@ -68,7 +68,7 @@ void NPCCollide(int A)
     // NPC[A].Type == NPCID_LIFT_SAND || NPC[A].Type == NPCID_PLANT_FIREBALL || NPC[A].Type == NPCID_FIRE_CHAIN
 
     // NPC properties that block collision query
-    if(NPC[A].Inert || NPC[A].Generator)
+    if(NPC[A].Inert || NPC[A].Generator || NPC[A]->NoNPCCollision)
         return;
 
     // NPC traits that prevent collision query
@@ -121,6 +121,10 @@ void NPCCollide(int A)
             continue;
 
         if(!CheckCollision(NPC[A].Location, NPC[B].Location))
+            continue;
+
+        // skip NPC-NPC collision if either NPC has NoNPCCollision
+        if(NPC[A]->NoNPCCollision || NPC[B]->NoNPCCollision)
             continue;
 
         // first exclusion condition
@@ -541,6 +545,18 @@ void NPCCollide(int A)
                 {
                     // set in SMBX 1.3 but reset to false before it got read
                     // NPC[A].onWall = true;
+
+                    // NpcBlockSide: block NPCs from passing through the side
+                    if(NPC[A]->NpcBlockSide)
+                    {
+                        NPC[B].TurnAround = true;
+                        continue;
+                    }
+                    if(NPC[B]->NpcBlockSide)
+                    {
+                        NPC[A].TurnAround = true;
+                        continue;
+                    }
 
                     if(NPC[A].Direction == NPC[B].Direction)
                     {

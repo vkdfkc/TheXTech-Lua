@@ -140,13 +140,14 @@ struct NPCTraits_t
     bool Stackable : 1;         // stays still when on another Stackable NPC
     bool CanMeltBlock : 1;      // can melt ice blocks on contact
     bool WingsForever : 1;      // wings don't disappear when hurt
+    bool NoNPCCollision : 1;    // skip NPC-NPC collision
     // Transform-on-death targets (0 = no transform)
     int16_t FrozenTime = 0;     // freeze duration in frames (-1 = never)
     int16_t YoshiTransform = 0; // NPC ID after yoshi swallow
     int16_t FrozenTransform = 0;// NPC ID after frozen
     int16_t JumpTransform = 0;  // NPC ID after jump stomp
 
-    constexpr NPCTraits_t() : IsFish(false), IsACoin(false), IsABonus(false), IsAVine(false), IsAShell(false), UseDefaultCam(false), InactiveRender(SHADE), NoHammer(false), NoShell(false), NoLava(false), NoLeaf(false), NoBlockHit(false), SpinJump(true), SpinJumpHurt(false), WaterJumpHurt(false), YoshiHurt(false), InstantKill(false), Immortal(false), GroundpoundBreak(false), MegaBreak(false), TurboWeak(false), NoSectionWrap(false), NpcBlockSide(false), Float(false), NoPiercingDmg(false), Pushable(false), Stackable(false), CanMeltBlock(false), WingsForever(false) {}
+    constexpr NPCTraits_t() : IsFish(false), IsACoin(false), IsABonus(false), IsAVine(false), IsAShell(false), UseDefaultCam(false), InactiveRender(SHADE), NoHammer(false), NoShell(false), NoLava(false), NoLeaf(false), NoBlockHit(false), SpinJump(true), SpinJumpHurt(false), WaterJumpHurt(false), YoshiHurt(false), InstantKill(false), Immortal(false), GroundpoundBreak(false), MegaBreak(false), TurboWeak(false), NoSectionWrap(false), NpcBlockSide(false), Float(false), NoPiercingDmg(false), Pushable(false), Stackable(false), CanMeltBlock(false), WingsForever(false), NoNPCCollision(false) {}
 };
 
 extern RangeArr<NPCTraits_t, 0, maxNPCType> NPCTraits;

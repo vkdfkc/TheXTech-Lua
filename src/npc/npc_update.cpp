@@ -1088,7 +1088,7 @@ interrupt_Activation:
 
                 if(NPC[A].Type == NPCID_FLIPPED_RAINBOW_SHELL && NPC[A].Special4 == 1)
                     NPC[A].Special5 = 0;
-                else if(!NPC[A]->IsFish && NPC[A].Type != NPCID_RAFT && NPC[A].Type != NPCID_WALL_BUG && NPC[A].Type != NPCID_WALL_SPARK && NPC[A].Type != NPCID_WALL_TURTLE)
+                else if(!NPC[A]->IsFish && NPC[A].Type != NPCID_RAFT && !NPC[A]->Float && NPC[A].Type != NPCID_WALL_BUG && NPC[A].Type != NPCID_WALL_SPARK && NPC[A].Type != NPCID_WALL_TURTLE)
                     speedVar /= 2;
                 else if(NPC[A]->IsFish && NPC[A].Special == 2 && NPC[A].Location.SpeedY > 0)
                     speedVar /= 2;
@@ -1104,9 +1104,13 @@ interrupt_Activation:
 
                 if(NPC[A].Type == NPCID_RAFT)
                     NPC[A].Special2 = 10; // Set a counter of being dry while floating on water top
+
+                // Float NPCs stay on water surface like rafts
+                if(NPC[A]->Float && NPC[A].Location.SpeedY > 0)
+                    NPC[A].Location.SpeedY = 0;
             }
             // as far as I'm aware it would make absolutely no difference if this did not happen for NPCID_RAFT
-            else if(NPC[A].Type == NPCID_RAFT || NPC[A]->IsFish)
+            else if(NPC[A].Type == NPCID_RAFT || NPC[A]->IsFish || NPC[A]->Float)
             {
                 if(NPC[A].Type == NPCID_RAFT && NPC[A].Special2 > 0)
                     --NPC[A].Special2; // Once it's dry, count down
