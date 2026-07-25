@@ -525,9 +525,17 @@ void xtech_lua_callGameLoad()
     if(!g_luaInitialized || !g_L)
         return;
 
+    int topBefore = lua_gettop(g_L);
+
     lua_getglobal(g_L, "OnGameLoad");
+    int type = lua_type(g_L, -1);
+    pLogInfo("Lua: OnGameLoad lookup: stack=%d, type=%d(%s), top=%d",
+        topBefore, type, lua_typename(g_L, type), lua_gettop(g_L));
+
     if(!lua_isfunction(g_L, -1))
     {
+        pLogWarning("Lua: OnGameLoad is not a function (type=%s), skipping",
+            lua_typename(g_L, type));
         lua_pop(g_L, 1);
         return;
     }
@@ -539,6 +547,8 @@ void xtech_lua_callGameLoad()
         pLogWarning("Lua: Error in OnGameLoad: %s", lua_tostring(g_L, -1));
         lua_pop(g_L, 1);
     }
+
+    pLogInfo("Lua: OnGameLoad done, stack=%d", lua_gettop(g_L));
 }
 
 
