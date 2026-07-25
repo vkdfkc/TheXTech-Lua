@@ -380,6 +380,22 @@ void xtech_lua_loadLevel()
     pLogInfo("Lua: Loaded and ran level script");
     g_luaWorking = true;
 
+    // Copy sandbox functions to _G so event dispatchers (lua_getglobal) can find them
+    lua_rawgeti(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+    lua_pushnil(g_L); // first key
+    while(lua_next(g_L, -2) != 0)
+    {
+        // key at -2, value at -1
+        if(lua_type(g_L, -1) == LUA_TFUNCTION)
+        {
+            lua_pushvalue(g_L, -2);  // copy key
+            lua_pushvalue(g_L, -2);  // copy value (function)
+            lua_settable(g_L, LUA_GLOBALSINDEX); // _G[key] = value
+        }
+        lua_pop(g_L, 1); // pop value, keep key
+    }
+    lua_pop(g_L, 1); // pop sandbox
+
     // Retrieve hook functions from sandbox
     g_luaFunc_onLoad       = getSandboxFunc(g_sandboxRef, "onLoad");
     g_luaFunc_onLoop       = getSandboxFunc(g_sandboxRef, "onLoop");
@@ -416,9 +432,23 @@ void xtech_lua_unloadLevel()
     g_luaFunc_onRenderHud = luabind::object();
     g_luaWorking = false;
 
-    // Release sandbox
+    // Clean up _G copies of sandbox functions + release sandbox
     if(g_sandboxRef != LUA_NOREF)
     {
+        lua_rawgeti(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+        lua_pushnil(g_L);
+        while(lua_next(g_L, -2) != 0)
+        {
+            if(lua_type(g_L, -1) == LUA_TFUNCTION)
+            {
+                lua_pushvalue(g_L, -2);
+                lua_pushnil(g_L);
+                lua_settable(g_L, LUA_GLOBALSINDEX);
+            }
+            lua_pop(g_L, 1);
+        }
+        lua_pop(g_L, 1);
+
         luaL_unref(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
         g_sandboxRef = LUA_NOREF;
     }
