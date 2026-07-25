@@ -860,4 +860,8 @@ void PauseGame(PauseCode code, int plr)
         if(!GameIsActive)
             break;
     } while(GamePaused != PauseCode::None && s_pauseLoopState.pause_stack_depth >= cur_pause_stack_depth);
+
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_unpause();
+#endif
 }

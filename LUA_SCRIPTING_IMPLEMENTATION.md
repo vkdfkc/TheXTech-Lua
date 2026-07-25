@@ -1326,11 +1326,11 @@ end
 | 关卡 | `onLevelExit` | 🟢 低 | ✅ 已实现 |
 | 关卡 | `onGameOver` | 🟢 低 | ✅ 已实现 |
 | 关卡 | `onPause` | 🟢 低 | ✅ 已实现 |
-| 关卡 | `onUnpause` | 🟢 低 | ⬜ 计划中 |
+| 关卡 | `onUnpause` | 🟢 低 | ✅ 已实现 |
 | 传送 | `onWarpEnter` | 🟡 中 | ⬜ 计划中 |
 | 传送 | `onWarpExit` | 🟡 中 | ⬜ 计划中 |
 
-**已完成：17 个事件 / 计划中：7 个事件 / 总计：25 个（含 onLevelLoad 则为 25 个系统事件）**
+**已完成：18 个事件 / 计划中：6 个事件 / 总计：24 个（含 onLevelLoad 则为 25 个系统事件）**
 
 ---
 
@@ -1474,10 +1474,9 @@ end
 
 ## 11. 未实现 / 后续扩展
 
-### 计划实现（P4 剩余 — 7 个事件）
+### 计划实现（P4 剩余 — 6 个事件）
 - [ ] **onNPCTouch** — TheXTech 中无直接触发点，需由事件系统驱动
 - [ ] **onPlayerPowerUp** / **onPlayerMount** / **onPlayerSwitchChar**
-- [ ] **onUnpause**
 - [ ] **onWarpEnter** / **onWarpExit**
 
 ### 中优先级
