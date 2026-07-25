@@ -232,9 +232,7 @@ void DrawCycloneAccessory(int Z, const Player_t& p, int cX, int tY, XTColor c)
     {
         extra_offX = (p.Character == 2) ? -10 : -8;
         int offY = (p.Character == 2) ? -4 : 0;
-
-        // Only apply MountOffsetY when actually mounted (not during flag exit)
-        extra_offY = (p.Mount > 0) ? p.MountOffsetY + offY : offY;
+        extra_offY = p.MountOffsetY + offY;
     }
     else if(p.Frame == 31)
     {

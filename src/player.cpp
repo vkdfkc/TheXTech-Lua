@@ -1857,11 +1857,6 @@ void PlayerFrame(Player_t &p)
         // }else{
         //     p.Frame = 31;
         // }
-
-        // Cancel the Yoshi-riding Y offset built into frame 30's pfrOffY
-        if(p.Frame == 30 && p.Mount == 0)
-            p.MountOffsetY = -PlayerFrameY[p.Character][(p.State * 100) + (p.Frame * p.Direction)];
-
         return;
     }
 

@@ -822,7 +822,8 @@ public:
 
     opt<bool> alt_powerdown{this, defaults(false), {CompatClass::critical_update, false}, Scope::CreatorEpisode,
         "alt-powerdown", "Alt powerdown (chars 1+2)", nullptr};
-
+    opt<bool> simple_powerdown{this, defaults(false), {CompatClass::critical_update, false}, Scope::CreatorEpisode,
+        "simple-powerdown", "Simple powerdown (chars 1+2)", nullptr};
     /* ---- Compatibility - Autocode ----*/
     subsection compat_autocode{this, "autocode", "Autocode"};
 
