@@ -55,6 +55,7 @@ static bool g_luaWorking = false;
 static bool g_luaInitialized = false;
 static bool g_gameLoaded = false;
 static int g_sandboxRef = LUA_NOREF;
+static bool s_wasOnMap = false;
 
 // Lua function references (level)
 static luabind::object g_luaFunc_onLoad;
@@ -336,6 +337,10 @@ void xtech_lua_loadLevel()
     if(!g_luaInitialized || !g_L || !g_config.lua_enable_engine)
         return;
 
+    // Leaving the map: fire OnLeaveMap + reset tracking
+    xtech_lua_mapLeave();
+    s_wasOnMap = false;
+
     // Ensure game.lua loaded first
     xtech_lua_loadGame();
 
@@ -588,12 +593,59 @@ bool xtech_lua_gameLoad(const std::string& jsonStr)
 // World map render hook
 // ============================================================================
 
+// ============================================================================
+// Map enter/leave hooks
+// ============================================================================
+
+void xtech_lua_mapEnter()
+{
+    if(!g_luaInitialized || !g_L) return;
+    xtech_lua_loadGame();
+
+    lua_getglobal(g_L, "OnEnterMap");
+    if(lua_isfunction(g_L, -1))
+    {
+        if(lua_pcall(g_L, 0, 0, 0) != 0)
+        {
+            pLogWarning("Lua: Error in OnEnterMap: %s", lua_tostring(g_L, -1));
+            lua_pop(g_L, 1);
+        }
+    }
+    else
+        lua_pop(g_L, 1);
+}
+
+void xtech_lua_mapLeave()
+{
+    if(!g_luaInitialized || !g_L) return;
+    if(!s_wasOnMap) return;  // only fire if we were actually on the map
+
+    lua_getglobal(g_L, "OnLeaveMap");
+    if(lua_isfunction(g_L, -1))
+    {
+        if(lua_pcall(g_L, 0, 0, 0) != 0)
+        {
+            pLogWarning("Lua: Error in OnLeaveMap: %s", lua_tostring(g_L, -1));
+            lua_pop(g_L, 1);
+        }
+    }
+    else
+        lua_pop(g_L, 1);
+}
+
 void xtech_lua_worldMapRender()
 {
     if(!g_luaInitialized || !g_L)
         return;
 
     xtech_lua_loadGame();  // ensure game.lua loaded
+
+    // Fire OnEnterMap on first render frame after entering the map
+    if(!s_wasOnMap)
+    {
+        s_wasOnMap = true;
+        xtech_lua_mapEnter();
+    }
 
     lua_getglobal(g_L, "OnWorldMapRender");
     if(lua_isfunction(g_L, -1))

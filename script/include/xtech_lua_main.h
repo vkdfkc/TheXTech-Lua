@@ -16,6 +16,8 @@ extern void xtech_lua_unloadLevel();   // Clear level state (no VM destruction)
 extern void xtech_lua_reset();         // Unload level (backward compat, no longer destroys VM)
 
 extern void xtech_lua_loop();
+extern void xtech_lua_mapEnter();       // Fires OnEnterMap in game.lua
+extern void xtech_lua_mapLeave();       // Fires OnLeaveMap in game.lua
 extern void xtech_lua_worldMapRender(); // World map render hook
 extern void xtech_lua_renderStart();
 extern void xtech_lua_renderEnd();
