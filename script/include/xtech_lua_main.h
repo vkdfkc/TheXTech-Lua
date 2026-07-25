@@ -4,9 +4,19 @@
 extern bool xtech_lua_init();
 extern bool xtech_lua_quit();
 
-extern void xtech_lua_load();
+// Game-level (global) Lua
+extern void xtech_lua_loadGame();     // Load game.lua once per session
+extern bool xtech_lua_gameSave(const std::string& dataPath);  // OnGameSave + serialize JSON
+extern bool xtech_lua_gameLoad(const std::string& jsonStr);   // OnGameLoad + deserialize JSON
+
+// Level-level Lua
+extern void xtech_lua_load();          // Load level script (calls loadGame + loadLevel)
+extern void xtech_lua_loadLevel();     // Sandbox-loaded level script
+extern void xtech_lua_unloadLevel();   // Clear level state (no VM destruction)
+extern void xtech_lua_reset();         // Unload level (backward compat, no longer destroys VM)
+
 extern void xtech_lua_loop();
-extern void xtech_lua_reset();
+extern void xtech_lua_worldMapRender(); // World map render hook
 extern void xtech_lua_renderStart();
 extern void xtech_lua_renderEnd();
 extern void xtech_lua_render(int screenZ);

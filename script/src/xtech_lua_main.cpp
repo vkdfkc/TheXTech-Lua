@@ -43,6 +43,7 @@ extern "C"
 
 #include "xtech_lua_main.h"
 #include "xtech_lua_bindings.h"
+#include "xtech_lua_data.h"
 
 
 // ============================================================================
@@ -52,8 +53,10 @@ extern "C"
 static lua_State *g_L = nullptr;
 static bool g_luaWorking = false;
 static bool g_luaInitialized = false;
+static bool g_gameLoaded = false;
+static int g_sandboxRef = LUA_NOREF;
 
-// Lua function references
+// Lua function references (level)
 static luabind::object g_luaFunc_onLoad;
 static luabind::object g_luaFunc_onLoop;
 static luabind::object g_luaFunc_onLoopEnd;
@@ -61,6 +64,30 @@ static luabind::object g_luaFunc_onRenderStart;
 static luabind::object g_luaFunc_onRenderEnd;
 static luabind::object g_luaFunc_onRender;
 static luabind::object g_luaFunc_onRenderHud;
+
+// ============================================================================
+// Sandbox: __newindex proxy — whitelist CustomData to _G
+// ============================================================================
+
+static int sandbox_newindex(lua_State* L)
+{
+    // Stack: 1=sandbox, 2=key, 3=value
+    const char* key = lua_tostring(L, 2);
+
+    // Whitelist: "CustomData" writes always go to the global table _G
+    if(key && strcmp(key, "CustomData") == 0)
+    {
+        lua_pushvalue(L, 3);
+        lua_setglobal(L, key);
+        return 0;
+    }
+
+    // All other writes stay in the sandbox: sandbox[key] = value
+    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 3);
+    lua_settable(L, 1);
+    return 0;
+}
 
 
 // ============================================================================
@@ -235,10 +262,54 @@ bool xtech_lua_init()
 }
 
 
-void xtech_lua_load()
+// ============================================================================
+// Game-level: load game.lua once per session
+// ============================================================================
+
+void xtech_lua_loadGame()
 {
     if(!g_luaInitialized || !g_L || !g_config.lua_enable_engine)
         return;
+    if(g_gameLoaded)
+        return;
+    g_gameLoaded = true;
+
+    std::string gamePath = AppPathManager::assetsRoot() + "game.lua";
+    if(Files::fileExists(gamePath))
+        loadAndRunLuaFile(gamePath, "game.lua");
+}
+
+
+// ============================================================================
+// Retrieve a function from sandbox by name (sandbox at given registry ref)
+// ============================================================================
+
+static luabind::object getSandboxFunc(int sandboxRef, const char* funcName)
+{
+    lua_rawgeti(g_L, LUA_REGISTRYINDEX, sandboxRef); // [sandbox]
+    lua_getfield(g_L, -1, funcName);                  // [sandbox][func/nil]
+    if(lua_isfunction(g_L, -1))
+    {
+        luabind::object obj(luabind::from_stack(g_L, -1));
+        lua_pop(g_L, 2);
+        return obj;
+    }
+    lua_pop(g_L, 2);
+    return luabind::object();
+}
+
+
+// ============================================================================
+// Revised xtech_lua_loadLevel
+// ============================================================================
+
+void xtech_lua_loadLevel()
+{
+    if(!g_luaInitialized || !g_L || !g_config.lua_enable_engine)
+        return;
+
+    // Ensure game.lua loaded first
+    xtech_lua_loadGame();
 
     // Clear previous function references
     g_luaFunc_onLoad = luabind::object();
@@ -250,66 +321,83 @@ void xtech_lua_load()
     g_luaFunc_onRenderHud = luabind::object();
     g_luaWorking = false;
 
-    // Load global script (once per session, deferred from init)
-    static bool s_globalLoaded = false;
-    if(!s_globalLoaded)
+    // Release old sandbox
+    if(g_sandboxRef != LUA_NOREF)
     {
-        s_globalLoaded = true;
-        std::string globalPath = AppPathManager::assetsRoot() + "lunaglobal.lua";
-        if(Files::fileExists(globalPath))
-            loadAndRunLuaFile(globalPath, "lunaglobal.lua");
+        luaL_unref(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+        g_sandboxRef = LUA_NOREF;
     }
 
-    // Load level-specific script
-    bool levelLoaded = false;
+    // Find level script
     std::string levelPath = g_dirCustom.resolveFileCaseExistsAbs("level.lua");
-    if(!levelPath.empty())
-    {
-        levelLoaded = loadAndRunLuaFile(levelPath, "level.lua");
-    }
-
-    // Also try lunadll.lua as fallback (similar to lunadll.txt naming)
-    if(!levelLoaded)
-    {
-        std::string altPath = g_dirCustom.resolveFileCaseExistsAbs("lunadll.lua");
-        if(!altPath.empty())
-        {
-            levelLoaded = loadAndRunLuaFile(altPath, "lunadll.lua");
-        }
-    }
-
-    g_luaWorking = levelLoaded;
-
-    if(!g_luaWorking)
+    if(levelPath.empty())
+        levelPath = g_dirCustom.resolveFileCaseExistsAbs("lunadll.lua");
+    if(levelPath.empty())
         return;
 
-    // Retrieve hook functions from the loaded script
-    g_luaFunc_onLoad       = getLuaFunc("onLoad");
-    g_luaFunc_onLoop       = getLuaFunc("onLoop");
-    g_luaFunc_onLoopEnd    = getLuaFunc("onLoopEnd");
-    g_luaFunc_onRenderStart = getLuaFunc("onRenderStart");
-    g_luaFunc_onRenderEnd  = getLuaFunc("onRenderEnd");
-    g_luaFunc_onRender     = getLuaFunc("onRender");
-    g_luaFunc_onRenderHud  = getLuaFunc("onRenderHud");
+    // Read and load the chunk
+    Files::Data data = Files::load_file(levelPath);
+    if(data.empty())
+        return;
+
+    int result = luaL_loadbuffer(g_L, data.c_str(), data.size(), levelPath.c_str());
+    if(result != 0)
+    {
+        pLogWarning("Lua: Error loading level script: %s", lua_tostring(g_L, -1));
+        lua_pop(g_L, 1);
+        return;
+    }
+
+    // Create sandbox table
+    lua_newtable(g_L);                           // [chunk][sandbox]
+
+    // Create metatable for sandbox
+    lua_newtable(g_L);                           // [chunk][sandbox][mt]
+    lua_pushvalue(g_L, LUA_GLOBALSINDEX);        // [chunk][sandbox][mt][_G]
+    lua_setfield(g_L, -2, "__index");            // mt.__index = _G
+    lua_pushcfunction(g_L, sandbox_newindex);    // [chunk][sandbox][mt][func]
+    lua_setfield(g_L, -2, "__newindex");         // mt.__newindex = sandbox_newindex
+    lua_setmetatable(g_L, -2);                   // setmetatable(sandbox, mt)
+    // [chunk][sandbox]
+
+    // Save sandbox ref before setfenv
+    g_sandboxRef = luaL_ref(g_L, LUA_REGISTRYINDEX); // [chunk], sandbox stored
+
+    // Push sandbox back, set as chunk env, execute
+    lua_rawgeti(g_L, LUA_REGISTRYINDEX, g_sandboxRef); // [chunk][sandbox]
+    lua_setfenv(g_L, -2);                                // [chunk]
+    result = lua_pcall(g_L, 0, 0, 0);                   // []
+    if(result != 0)
+    {
+        pLogWarning("Lua: Error running level script: %s", lua_tostring(g_L, -1));
+        lua_pop(g_L, 1);
+        luaL_unref(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+        g_sandboxRef = LUA_NOREF;
+        return;
+    }
+
+    pLogInfo("Lua: Loaded and ran level script");
+    g_luaWorking = true;
+
+    // Retrieve hook functions from sandbox
+    g_luaFunc_onLoad       = getSandboxFunc(g_sandboxRef, "onLoad");
+    g_luaFunc_onLoop       = getSandboxFunc(g_sandboxRef, "onLoop");
+    g_luaFunc_onLoopEnd    = getSandboxFunc(g_sandboxRef, "onLoopEnd");
+    g_luaFunc_onRenderStart = getSandboxFunc(g_sandboxRef, "onRenderStart");
+    g_luaFunc_onRenderEnd  = getSandboxFunc(g_sandboxRef, "onRenderEnd");
+    g_luaFunc_onRender     = getSandboxFunc(g_sandboxRef, "onRender");
+    g_luaFunc_onRenderHud  = getSandboxFunc(g_sandboxRef, "onRenderHud");
 
     // Call onLoad immediately
     safeCallLuaFunc(g_luaFunc_onLoad, "onLoad");
 }
 
 
-void xtech_lua_loop()
-{
-    if(!g_luaWorking)
-        return;
+// ============================================================================
+// Unload level script (no VM destruction)
+// ============================================================================
 
-    // Process async delayed calls
-    xtech_lua_process_delayed_calls();
-
-    safeCallLuaFunc(g_luaFunc_onLoop, "onLoop");
-}
-
-
-void xtech_lua_reset()
+void xtech_lua_unloadLevel()
 {
     if(!g_luaInitialized || !g_L)
         return;
@@ -327,18 +415,164 @@ void xtech_lua_reset()
     g_luaFunc_onRenderHud = luabind::object();
     g_luaWorking = false;
 
-    // Clear Lua globals by recreating the state
-    if(g_L)
+    // Release sandbox
+    if(g_sandboxRef != LUA_NOREF)
     {
-        lua_close(g_L);
-        g_L = nullptr;
+        luaL_unref(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+        g_sandboxRef = LUA_NOREF;
+    }
+}
+
+
+// ============================================================================
+// Backward-compatible xtech_lua_load (game + level)
+// ============================================================================
+
+void xtech_lua_load()
+{
+    xtech_lua_loadGame();
+    xtech_lua_loadLevel();
+}
+
+
+// ============================================================================
+// Revised xtech_lua_reset (no VM destruction)
+// ============================================================================
+
+void xtech_lua_reset()
+{
+    xtech_lua_unloadLevel();
+}
+
+
+// ============================================================================
+// Game-level hooks: OnGameSave / OnGameLoad
+// ============================================================================
+
+void xtech_lua_callGameSave()
+{
+    if(!g_luaInitialized || !g_L)
+        return;
+
+    lua_getglobal(g_L, "OnGameSave");
+    if(!lua_isfunction(g_L, -1))
+    {
+        lua_pop(g_L, 1);
+        return;
     }
 
-    g_luaInitialized = false;
+    // Call OnGameSave(), expects return table
+    if(lua_pcall(g_L, 0, 1, 0) != 0)
+    {
+        pLogWarning("Lua: Error in OnGameSave: %s", lua_tostring(g_L, -1));
+        lua_pop(g_L, 1);
+        return;
+    }
 
-    // Re-initialize if enabled
-    if(g_config.lua_enable_engine)
-        xtech_lua_init();
+    // Table is left on stack for caller to serialize
+    // Caller must pop when done
+}
+
+
+void xtech_lua_callGameLoad()
+{
+    if(!g_luaInitialized || !g_L)
+        return;
+
+    lua_getglobal(g_L, "OnGameLoad");
+    if(!lua_isfunction(g_L, -1))
+    {
+        lua_pop(g_L, 1);
+        return;
+    }
+
+    // Caller must push data table before calling this
+    // OnGameLoad(table)
+    if(lua_pcall(g_L, 1, 0, 0) != 0)
+    {
+        pLogWarning("Lua: Error in OnGameLoad: %s", lua_tostring(g_L, -1));
+        lua_pop(g_L, 1);
+    }
+}
+
+
+// Complete save cycle: call OnGameSave, serialize to JSON, write file
+bool xtech_lua_gameSave(const std::string& dataPath)
+{
+    xtech_lua_callGameSave();
+
+    if(!g_L || !lua_istable(g_L, -1))
+    {
+        if(g_L && lua_gettop(g_L) > 0) lua_pop(g_L, 1);
+        return false;
+    }
+
+    std::string json = lua_table_to_json(g_L, lua_gettop(g_L));
+    lua_pop(g_L, 1);
+
+    if(json.empty() || json == "null")
+        return false;
+
+    // Write JSON to file
+    FILE* f = Files::utf8_fopen(dataPath.c_str(), "w");
+    if(!f) return false;
+    fwrite(json.c_str(), 1, json.size(), f);
+    fclose(f);
+    return true;
+}
+
+
+// Complete load cycle: parse JSON, call OnGameLoad
+bool xtech_lua_gameLoad(const std::string& jsonStr)
+{
+    if(!g_L) return false;
+
+    if(jsonStr.empty())
+    {
+        lua_newtable(g_L);
+    }
+    else
+    {
+        json_to_lua_table(g_L, jsonStr);
+    }
+
+    xtech_lua_callGameLoad();
+    return true;
+}
+
+
+// ============================================================================
+// World map render hook
+// ============================================================================
+
+void xtech_lua_worldMapRender()
+{
+    if(!g_luaInitialized || !g_L)
+        return;
+
+    lua_getglobal(g_L, "OnWorldMapRender");
+    if(lua_isfunction(g_L, -1))
+    {
+        if(lua_pcall(g_L, 0, 0, 0) != 0)
+        {
+            pLogWarning("Lua: Error in OnWorldMapRender: %s", lua_tostring(g_L, -1));
+            lua_pop(g_L, 1);
+        }
+    }
+    else
+        lua_pop(g_L, 1);
+}
+
+
+void xtech_lua_loop()
+{
+    if(!g_luaWorking)
+        return;
+
+    // Process async delayed calls
+    xtech_lua_process_delayed_calls();
+
+    safeCallLuaFunc(g_luaFunc_onLoop, "onLoop");
 }
 
 
@@ -383,15 +617,18 @@ bool xtech_lua_quit()
     // Call onLoopEnd one last time if available
     safeCallLuaFunc(g_luaFunc_onLoopEnd, "onLoopEnd");
 
-    // Clear function references
-    g_luaFunc_onLoad = luabind::object();
-    g_luaFunc_onLoop = luabind::object();
-    g_luaFunc_onLoopEnd = luabind::object();
-    g_luaFunc_onRenderStart = luabind::object();
-    g_luaFunc_onRenderEnd = luabind::object();
-    g_luaFunc_onRender = luabind::object();
-    g_luaFunc_onRenderHud = luabind::object();
+    // Unload level state
+    xtech_lua_unloadLevel();
+
+    // Release sandbox
+    if(g_sandboxRef != LUA_NOREF)
+    {
+        luaL_unref(g_L, LUA_REGISTRYINDEX, g_sandboxRef);
+        g_sandboxRef = LUA_NOREF;
+    }
+
     g_luaWorking = false;
+    g_gameLoaded = false;
 
     // Destroy Lua state
     if(g_L)

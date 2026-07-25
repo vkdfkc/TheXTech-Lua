@@ -1629,6 +1629,40 @@ static void player_setPhysics(int character, int state,
         Physics.PlayerAccessoryOffsetY[character][state] = v;
 }
 
+// ============================================================================
+// World map API
+// ============================================================================
+
+// Returns the filename of the world level the player is standing on, or empty string
+static std::string worldmap_getCurrentLevel()
+{
+    int idx = WorldPlayer[1].LevelIndex;
+    if(idx > 0 && idx <= numWorldLevels && WorldLevel[idx].Active)
+        return WorldLevel[idx].FileName;
+    return std::string();
+}
+
+// Returns the screen X, Y of a world level by filename (second return value is Y via luabind)
+static luabind::object worldmap_getLevelScreenPos(const std::string &levelName)
+{
+    lua_State* L = xtech_lua_getState();
+    for(int i = 1; i <= numWorldLevels; i++)
+    {
+        if(WorldLevel[i].Active && WorldLevel[i].FileName == levelName)
+        {
+            // Calculate screen position from world coords
+            int screenX = (int)WorldLevel[i].Location.X;
+            int screenY = (int)WorldLevel[i].Location.Y;
+
+            luabind::object t = luabind::newtable(L);
+            t["x"] = screenX;
+            t["y"] = screenY;
+            return t;
+        }
+    }
+    return luabind::object(); // nil
+}
+
 } // namespace LuaMisc
 
 
@@ -2457,6 +2491,10 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_misc_showMsgWarn", &LuaMisc::showMsgWarn),
         def("xtech_misc_cheat", &LuaMisc::cheat),
         def("xtech_misc_log", &LuaMisc::logMsg),
+        // World map
+        def("xtech_worldmap_getCurrentLevel", &LuaMisc::worldmap_getCurrentLevel),
+        def("xtech_worldmap_getLevelScreenPos", &LuaMisc::worldmap_getLevelScreenPos),
+        // Config
         def("xtech_misc_getConfig", &LuaMisc::misc_getConfig),
         def("xtech_misc_setConfig", &LuaMisc::misc_setConfig),
         def("xtech_misc_setConfigStr", &LuaMisc::misc_setConfigStr),

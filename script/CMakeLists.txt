@@ -23,6 +23,7 @@ set(LIB_XTECHLUA_SRCS
     src/xtech_lua_main.cpp
     src/xtech_lua_bindings.cpp
     src/xtech_lua_events.cpp
+    src/xtech_lua_data.cpp
 )
 
 add_library(XTechLua STATIC

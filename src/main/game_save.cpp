@@ -28,7 +28,12 @@
 #include "../script/luna/lunavarbank.h"
 #endif
 
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_main.h"
+#endif
+
 #include <Utils/files.h>
+#include <cstdio>
 #include <DirManager/dirman.h>
 #include <AppPath/app_path.h>
 #include <PGE_File_Formats/file_formats.h>
@@ -361,6 +366,15 @@ void SaveGame()
     // save extra settings here
     g_config.SaveEpisodeConfig(sav.userData);
 
+#ifdef ENABLE_XTECH_LUA
+    // Trigger Lua OnGameSave hook → serialize to save{id}.luadata
+    {
+        std::string dataPath = makeGameSavePath(w.WorldFilePath,
+            fmt::format_ne("save{0}.luadata", selSave));
+        xtech_lua_gameSave(dataPath);
+    }
+#endif
+
     ExportLevelSaveInfo(sav);
 
     FileFormats::WriteExtendedSaveFileF(savePath, sav);
@@ -560,6 +574,21 @@ void LoadGame()
     }
 
     gSavedVarBank.TryLoadWorldVars();
+#endif
+
+#ifdef ENABLE_XTECH_LUA
+    // Trigger Lua OnGameLoad hook with data from save{id}.luadata
+    {
+        std::string dataPath = makeGameSavePath(w.WorldFilePath,
+            fmt::format_ne("save{0}.luadata", selSave));
+        std::string json;
+        if(Files::fileExists(dataPath))
+        {
+            Files::Data d = Files::load_file(dataPath);
+            json.assign(d.c_str(), d.size());
+        }
+        xtech_lua_gameLoad(json);
+    }
 #endif
 
     ImportLevelSaveInfo(sav);

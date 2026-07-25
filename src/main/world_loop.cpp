@@ -35,6 +35,9 @@
 #include "../main/trees.h"
 #include "../core/events.h"
 #include "../config.h"
+#ifdef ENABLE_XTECH_LUA
+#   include "../script/include/xtech_lua_main.h"
+#endif
 #include "gfx.h"
 #include "message.h"
 #include "main/world_globals.h"
@@ -277,6 +280,10 @@ void WorldLoop()
     speedRun_tick();
     Integrator::sync();
     UpdateGraphics2();
+
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_worldMapRender();
+#endif
 
     if(!Controls::Update())
     {
