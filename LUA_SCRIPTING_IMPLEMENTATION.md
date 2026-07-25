@@ -88,6 +88,8 @@ level.lua chunk 以 Sandbox 为环境执行
 -- === game.lua（全局钩子） ===
 function OnGameSave()                    -- 存档时触发，返回要持久化的 table
 function OnGameLoad(data)                -- 读档时触发，参数为上次保存的 table
+function OnEnterMap()                    -- 进入大地图时触发（首帧渲染前，关卡上下文已就绪）
+function OnLeaveMap()                    -- 离开大地图进入关卡时触发
 function OnWorldMapRender()              -- 世界地图每帧渲染
 
 -- === level.lua（关卡钩子） ===
@@ -99,7 +101,7 @@ function onRenderEnd()                   -- 每帧渲染后
 function onRender(Z)                     -- 每层渲染（Z=屏幕层号）
 function onRenderHud(Z, numScreens)      -- HUD 渲染
 function onLevelComplete()               -- 关卡通关时触发
-function onLevelExit()                   -- 关卡退出时触发（死亡、完成、手动退出都触发）
+function onLevelExit()                   -- 关卡退出时触发（死亡、完成、手动退出均触发）
 
 -- === 事件钩子（关卡脚本中定义，见第 8 章） ===
 function onNPCDeath(permid, npcId, killer)
@@ -181,7 +183,35 @@ number、string、boolean、嵌套 table、nil（序列化为 `null`）。存储
 
 ### 钩子
 
-`OnWorldMapRender()` — 世界地图每帧渲染时调用，定义在 `game.lua` 中。
+| 钩子 | 文件 | 触发时机 | `g_dirEpisode` 是否就绪 |
+|------|------|---------|------------------------|
+| `OnGameLoad(data)` | game.lua | 读档/新游戏时 | ❌ 可能未设 |
+| `OnEnterMap()` | game.lua | 进入大地图（首帧渲染前） | ✅ 已就绪 |
+| `OnWorldMapRender()` | game.lua | 大地图每帧渲染 | ✅ 已就绪 |
+| `OnLeaveMap()` | game.lua | 从大地图进入关卡时 | ✅ 已就绪 |
+| `OnGameSave()` | game.lua | 存档时 | ✅ 已就绪 |
+
+**推荐模式**：图像加载放 `OnEnterMap`，关卡数据恢复放 `OnGameLoad`。
+
+```lua
+-- game.lua
+function OnGameLoad(data)
+    CustomData = data       -- 只恢复数据，不加载图像
+end
+
+function OnEnterMap()
+    -- 首次或从关卡返回大地图时触发，目录上下文已就绪
+    xtech_sprite_loadImageSimple("graphics/map_star.png", 100)
+end
+
+function OnLeaveMap()
+    -- 进入关卡前触发，可清理地图独占资源
+end
+
+function OnWorldMapRender()
+    -- 每帧渲染大地图 HUD
+end
+```
 
 ### API
 
@@ -1238,7 +1268,11 @@ end
 ```
 
 #### onLevelExit()
-**触发时机：** 关卡退出时（死亡、完成、手动退出均触发）。在 `xtech_lua_unloadLevel()` 中调用，早于函数引用清理。
+**触发时机：** 关卡退出时（死亡、完成、手动退出均触发）。在 `xtech_lua_unloadLevel()` 中调用，早于函数引用清理。与 `onLoopEnd` 不同：`onLevelExit` 每次关卡退出都触发（用 `xtech_lua_getFunc` 沙箱感知查找），`onLoopEnd` 仅在 `xtech_lua_quit` 游戏退出时触发一次。
+**参数：** 无
+
+#### onLevelComplete()
+**触发时机：** 关卡通关（接触到终点/球/星星/磁带时）。触发早于 `onLevelExit`。
 **参数：** 无
 
 #### onGameOver()
