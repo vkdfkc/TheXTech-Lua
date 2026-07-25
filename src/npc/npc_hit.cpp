@@ -206,6 +206,10 @@ void NPCHit(int A, int B, int C)
     if(NPC[A].Killed > 0)
         return;
 
+    // Immortal NPCs cannot be damaged/killed by normal means (B=9 is despawn/timeout)
+    if(NPC[A]->Immortal && B != 9)
+        return;
+
     // TurboWeak: turbo dash deals shell-level damage to this NPC
     if(NPC[A]->TurboWeak && B == 1)
     {
