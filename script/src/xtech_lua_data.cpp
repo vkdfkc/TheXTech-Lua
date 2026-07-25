@@ -401,9 +401,8 @@ void json_to_lua_table(lua_State* L, const std::string& json)
 
     if(!p)
     {
-        // Parse error: pop whatever, push empty table
-        if(lua_gettop(L) > 0)
-            lua_pop(L, 1);
+        // Parse error: clear stack completely, push empty table
+        lua_settop(L, 0);
         lua_newtable(L);
     }
 }
