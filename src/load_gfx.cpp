@@ -711,7 +711,7 @@ bool LoadGFXFromList(std::string source_dir, bool custom, bool skip_world)
             }
 
             loadImageFromList(in, line_buf, source_dir,
-                (*GFXCharacterBMP[c])[A], nullptr, nullptr, nullptr,
+                GFXCharacterBMP[c][A], nullptr, nullptr, nullptr,
                 false, custom);
         }
 
@@ -859,7 +859,7 @@ void LoadGFX()
         {
             s_find_image(p, CurDir, fmt::sprintf_ne("%s-%d", GFXPlayerNames[c], A));
             if(!p.empty())
-                XRender::lazyLoadPicture((*GFXCharacterBMP[c])[A], p);
+                XRender::lazyLoadPicture(GFXCharacterBMP[c][A], p);
         }
         UpdateLoad();
     }
@@ -1136,7 +1136,7 @@ void UnloadGFX(bool reload)
     {
         For(A, 1, 10)
         {
-            (*GFXCharacterBMP[c])[A].reset();
+            GFXCharacterBMP[c][A].reset();
         }
     }
 
@@ -1372,7 +1372,7 @@ void LoadCustomGFX(bool include_world, const char* preview_players_from)
         {
             loadCGFX(GFXPlayerNames[c], pstem.c_str(), A,
                      nullptr, nullptr,
-                     nullptr, (*GFXCharacterBMP[c])[A]);
+                     nullptr, GFXCharacterBMP[c][A]);
         }
     }
 

@@ -117,7 +117,36 @@ struct NPCTraits_t
     //NEW: how should the NPC render when inactive?
     InactiveRender_t InactiveRender : 3;
 
-    constexpr NPCTraits_t() : IsFish(false), IsACoin(false), IsABonus(false), IsAVine(false), IsAShell(false), UseDefaultCam(false), InactiveRender(SHADE) {}
+    // Extended traits (from SMBX-38A / TheXTech custom npc-*.txt)
+    bool NoHammer : 1;          // immune to hammers/axes
+    bool NoShell : 1;           // immune to thrown shells
+    bool NoLava : 1;            // immune to lava
+    bool NoLeaf : 1;            // immune to leaf/tanooki tail
+    bool NoBlockHit : 1;        // immune to damage from block hits
+    bool SpinJump : 1;          // allows spin jump stomp (default true for backward compat)
+    bool SpinJumpHurt : 1;      // hurts player on spin jump
+    bool WaterJumpHurt : 1;     // hurts player on water jump
+    bool YoshiHurt : 1;         // hurts yoshi-rider on stomp
+    bool InstantKill : 1;       // instant kill on contact
+    bool Immortal : 1;          // cannot be killed (respawns itself)
+    bool GroundpoundBreak : 1;  // ground pound breaks this NPC
+    bool MegaBreak : 1;         // mega form breaks this NPC
+    bool TurboWeak : 1;         // turbo dash deals shell damage
+    bool NoSectionWrap : 1;     // ignores section wrap
+    bool NpcBlockSide : 1;      // block NPCs at side (separate from npcblock)
+    bool Float : 1;             // floats on water surface
+    bool NoPiercingDmg : 1;     // immune to piercing damage
+    bool Pushable : 1;          // can be pushed by player
+    bool Stackable : 1;         // stays still when on another Stackable NPC
+    bool CanMeltBlock : 1;      // can melt ice blocks on contact
+    bool WingsForever : 1;      // wings don't disappear when hurt
+    // Transform-on-death targets (0 = no transform)
+    int16_t FrozenTime = 0;     // freeze duration in frames (-1 = never)
+    int16_t YoshiTransform = 0; // NPC ID after yoshi swallow
+    int16_t FrozenTransform = 0;// NPC ID after frozen
+    int16_t JumpTransform = 0;  // NPC ID after jump stomp
+
+    constexpr NPCTraits_t() : IsFish(false), IsACoin(false), IsABonus(false), IsAVine(false), IsAShell(false), UseDefaultCam(false), InactiveRender(SHADE), NoHammer(false), NoShell(false), NoLava(false), NoLeaf(false), NoBlockHit(false), SpinJump(true), SpinJumpHurt(false), WaterJumpHurt(false), YoshiHurt(false), InstantKill(false), Immortal(false), GroundpoundBreak(false), MegaBreak(false), TurboWeak(false), NoSectionWrap(false), NpcBlockSide(false), Float(false), NoPiercingDmg(false), Pushable(false), Stackable(false), CanMeltBlock(false), WingsForever(false) {}
 };
 
 extern RangeArr<NPCTraits_t, 0, maxNPCType> NPCTraits;

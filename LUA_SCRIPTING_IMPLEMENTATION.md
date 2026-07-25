@@ -1630,3 +1630,182 @@ cmake -DTHEXTECH_ENABLE_LUA=OFF ..
 3. 编译 `XTechLua` 库（`script/` 目录）
 4. 定义 `ENABLE_XTECH_LUA` 预处理器宏
 5. 启用所有 `#ifdef ENABLE_XTECH_LUA` 保护的代码路径
+
+---
+
+## 14. 自定义角色注册（P8）
+
+C++ 侧已将角色系统从 5 角色/11 状态扩容到 **50 角色/50 状态**。默认只激活 1-5（Mario/Luigi/Peach/Toad/Link），6-50 的槽位预留给 Lua 动态注册。
+
+### 14.1 架构说明
+
+| 概念 | 说明 |
+|------|------|
+| 角色槽位 | 1-50，通过 `p.Character` 使用 |
+| 状态槽位 | 1-50，通过 `p.State` 使用 |
+| 资源目录 | `graphics/<name>/<name>-S.png`（S=状态号，1-50） |
+| INI 配置 | `<name>-S.ini`（Episode 或关卡自定义目录，可选） |
+| 物理参数 | `Physics.PlayerWidth[id][state]` 等，运行时可用 API 修改 |
+| 帧偏移 | `PlayerFrameX[id][index]` / `PlayerFrameY[id][index]`，由 INI 的 `[frame-X-Y]` 段自动填充 |
+| 纹理 | `GFXCharacterBMP[id-1][state]`，`reload` 时加载 |
+
+### 14.2 注册 API
+
+**文件：** [script/src/xtech_lua_bindings.cpp](script/src/xtech_lua_bindings.cpp)
+
+#### `xtech_player_setName(character, dirname)`
+
+设置角色槽位的资源目录名。必须在 `xtech_player_reload` 之前调用。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| character | int | 角色 ID（6-50 用于新角色，也可覆盖 1-5） |
+| dirname | string | `graphics/` 下的目录名，例如 `"my_char"` → `graphics/my_char/` |
+
+```lua
+xtech_player_setName(6, "my_custom_mario")  -- 使用 graphics/my_custom_mario/ 目录
+```
+
+#### `xtech_player_reload(character)`
+
+加载指定角色的纹理和 INI 配置。
+
+**纹理加载路径：** `graphics/<dirname>/<dirname>-1.png` 到 `<dirname>-50.png`
+**INI 加载路径：** 先搜 Episode 目录，再搜关卡自定义目录，文件格式 `<dirname>-S.ini`
+
+只有文件存在才会加载，缺失静默跳过。
+
+```lua
+xtech_player_reload(6)  -- 扫描并加载角色 6 的所有资源
+```
+
+#### `xtech_player_setPhysics(character, state, field, value)`
+
+运行时修改物理参数。不持久化（重启关卡后会恢复默认值）。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| character | int | 角色 ID |
+| state | int | 状态 ID（1-50） |
+| field | string | 字段名（见下表） |
+| value | number | 新值（整数，内部向下取整） |
+
+**支持的 field 值：**
+
+| field | 对应 C++ 字段 | 默认值 |
+|-------|-------------|-------|
+| `"width"` | `Physics.PlayerWidth[char][state]` | 0 |
+| `"height"` | `Physics.PlayerHeight[char][state]` | 0 |
+| `"duckHeight"` | `Physics.PlayerDuckHeight[char][state]` | 0 |
+| `"grabX"` | `Physics.PlayerGrabSpotX[char][state]` | 0 |
+| `"grabY"` | `Physics.PlayerGrabSpotY[char][state]` | 0 |
+| `"accX"` | `Physics.PlayerAccessoryOffsetX[char][state]` | 0 |
+| `"accY"` | `Physics.PlayerAccessoryOffsetY[char][state]` | 0 |
+
+### 14.3 INI 文件格式
+
+放在 Episode 目录或关卡自定义目录下，文件名如 `my_char-1.ini`：
+
+```ini
+[common]
+width = 24
+height = 32
+height-duck = 20
+grab-offset-x = 2
+grab-offset-y = -4
+accessory-offset-x = 0
+accessory-offset-y = 0
+propeller-climb-offset = 3
+propeller-climb-frames = 4
+accessory-climb-offset-x = 0
+accessory-climb-offset-y = 0
+
+[frame-0-4]
+used = true
+offsetX = 2
+offsetY = -6
+```
+
+`[frame-X-Y]` 段对应 10×10 精灵网格坐标（X=0..9, Y=0..9）。`state*100` 偏移自动处理，不需要手动指定状态号。
+
+### 14.4 完整示例
+
+以下示例注册角色 6，加载资源，实现自定义跳跃：
+
+```lua
+-- level.lua
+
+function onLoad()
+    -- 注册自定义角色（槽位 6）
+    xtech_player_setName(6, "my_char")
+    xtech_player_reload(6)
+
+    -- 设置物理参数
+    xtech_player_setPhysics(6, 1, "width", 24)    -- 小状态宽度
+    xtech_player_setPhysics(6, 1, "height", 32)   -- 小状态高度
+    xtech_player_setPhysics(6, 2, "width", 28)    -- 大状态宽度
+    xtech_player_setPhysics(6, 2, "height", 48)   -- 大状态高度
+end
+
+-- 自定义状态常量
+local STATE_SMALL = 1
+local STATE_SUPER = 2
+
+function onLoop()
+    local p = xtech_player_get(1)
+    if not p or p.Character ~= 6 then return end
+
+    -- 自定义跳跃
+    if p.Controls.Jump and p.StandingOnNPC > 0 then
+        -- 从 INI 读不到跳跃速度时可运行时设置
+        -- 注意：JumpVelocity 是全局参数，不按角色分
+    end
+
+    -- 自定义动画帧
+    if p.State == STATE_SUPER then
+        -- 可以改变 p.Frame 来控制精灵
+    end
+end
+```
+
+### 14.5 资源目录布局
+
+```
+Episode/
+├── my_char-1.ini          # 状态 1 的 INI（Episode 级别）
+├── my_char-2.ini          # 状态 2 的 INI
+├── 1-1 My Level/
+│   ├── level.lua          # 关卡脚本
+│   └── my_char-1.ini      # 关卡级别覆盖 INI（优先级最高）
+└── graphics/
+    └── my_char/
+        ├── my_char-1.png  # 状态 1 的精灵图（建议 1000×? 布局）
+        ├── my_char-2.png  # 状态 2 的精灵图
+        └── ...
+```
+
+### 14.6 在当前存档中使用自定义角色
+
+角色 6-50 默认为零值状态。要让玩家以自定义角色开始关卡：
+
+**方法 A：Lua 强制切换**
+
+```lua
+function onLoad()
+    local p = xtech_player_get(1)
+    if p then
+        p.Character = 6
+        p.State = 1
+    end
+end
+```
+
+**方法 B：Future** — 后续可通过关卡起始点编辑器或 Episode 配置指定起始角色。
+
+### 14.7 限制
+
+- **角色专属逻辑（C++ 侧 82 处 `if(p.Character == N)`）**：新角色不匹配，行为回退到默认（类似 Mario 但无特殊能力）。所有特殊能力需在 Lua `onLoop` 中自行实现
+- **帧偏移**：目前只能通过 INI 文件设置，没有 Lua API 直接写 `PlayerFrameX/Y`
+- **跳跃速度/重力**：这些是全局参数（`Physics.PlayerJumpVelocity` 等），不按角色区分，修改会影响所有角色
+- **角色名纹理**：`CharacterName` 只加载 1-5，新角色在 HUD 名字显示上需要自行用 `showText` 处理
+- **声音/特效**：角色专属音效和死亡特效需要 Lua 事件钩子处理

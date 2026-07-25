@@ -24,6 +24,13 @@
 
 void SetupPlayerFrames()
 {
+    // Local aliases — data writes into the unified PlayerFrameX/Y arrays
+    auto& MarioFrameX = PlayerFrameX[1]; auto& MarioFrameY = PlayerFrameY[1];
+    auto& LuigiFrameX = PlayerFrameX[2]; auto& LuigiFrameY = PlayerFrameY[2];
+    auto& PeachFrameX = PlayerFrameX[3]; auto& PeachFrameY = PlayerFrameY[3];
+    auto& ToadFrameX = PlayerFrameX[4];   auto& ToadFrameY = PlayerFrameY[4];
+    auto& LinkFrameX = PlayerFrameX[5];   auto& LinkFrameY = PlayerFrameY[5];
+
     For(A, 1, maxPlayerFrames)
     {
         MarioFrameX[A] = 0;
@@ -35,6 +42,14 @@ void SetupPlayerFrames()
         ToadFrameX[A] = 0;
         ToadFrameY[A] = 0;
     }
+
+    // Zero-initialize frame offsets for characters 6-50
+    for(int c = 6; c <= numCharacters; c++)
+        for(int A = 0; A <= maxPlayerFrames; A++)
+        {
+            PlayerFrameX[c][A] = 0;
+            PlayerFrameY[c][A] = 0;
+        }
 
     LinkFrameY[101] = -8;
     LinkFrameY[102] = -8;

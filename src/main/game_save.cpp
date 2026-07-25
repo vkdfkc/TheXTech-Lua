@@ -183,7 +183,7 @@ void FindSaves()
             info.Score = f.points;
 
             // load saved chars
-            for(int i = 1; i <= 5; i++)
+            for(int i = 1; i <= numCharacters; i++)
             {
                 info.SavedChar[i] = SavedChar_t();
                 info.SavedChar[i].Character = i;
@@ -191,7 +191,7 @@ void FindSaves()
 
             for(auto &s : f.characterStates)
             {
-                if((s.id < 1) || (s.id > 5))
+                if((s.id < 1) || (s.id > numCharacters))
                     continue;
                 int i = int(s.id);
                 s_LoadCharacter(info.SavedChar[i], s);
@@ -304,7 +304,7 @@ void SaveGame()
     sav.worldPosX = (int)WorldPlayer[1].Location.X;
     sav.worldPosY = (int)WorldPlayer[1].Location.Y;
 
-    for(A = 1; A <= 5; A++)
+    for(A = 1; A <= numCharacters; A++)
     {
         saveCharState c;
         c.id = static_cast<unsigned long>(A);
@@ -492,7 +492,7 @@ void LoadGame()
 
     ReturnWarpSaved = ReturnWarp;
 
-    for(A = 1; A <= 5; A++)
+    for(A = 1; A <= numCharacters; A++)
     {
         SavedChar[A] = SavedChar_t();
         SavedChar[A].Character = A;
@@ -500,7 +500,7 @@ void LoadGame()
 
     for(auto &s : sav.characterStates)
     {
-        if((s.id < 1) || (s.id > 5))
+        if((s.id < 1) || (s.id > numCharacters))
             continue;
         A = int(s.id);
 
@@ -579,7 +579,7 @@ void ClearGame(bool punnish)
     WorldPlayer[1].Location.X = -1;
     WorldPlayer[1].Location.Y = -1;
 
-    for(int A = 1; A <= 5; A++)
+    for(int A = 1; A <= numCharacters; A++)
     {
         SavedChar[A].State = 1;
         SavedChar[A].HeldBonus = NPCID(0);

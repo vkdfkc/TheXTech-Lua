@@ -145,12 +145,10 @@ int pfrOffX(const StdPicture& tx, const Player_t& p)
 {
     UNUSED(tx);
 
-    if((p.Character < 1) || (p.Character > 5))
+    if((p.Character < 1) || (p.Character > numCharacters))
         return 0;
 
-    using plr_frame_off_arr = RangeArrI<int8_t, 0, maxPlayerFrames, 0>;
-    constexpr std::array<plr_frame_off_arr*, 5> char_offsetX = {&MarioFrameX, &LuigiFrameX, &PeachFrameX, &ToadFrameX, &LinkFrameX};
-    int offX = (*char_offsetX[p.Character - 1])[(p.State * 100) + (p.Frame * p.Direction)];
+    int offX = PlayerFrameX[p.Character][(p.State * 100) + (p.Frame * p.Direction)];
 
     return offX;
 }
@@ -160,12 +158,10 @@ int pfrOffY(const StdPicture& tx, const Player_t& p)
 {
     UNUSED(tx);
 
-    if((p.Character < 1) || (p.Character > 5))
+    if((p.Character < 1) || (p.Character > numCharacters))
         return 0;
 
-    using plr_frame_off_arr = RangeArrI<int8_t, 0, maxPlayerFrames, 0>;
-    constexpr std::array<plr_frame_off_arr*, 5> char_offsetY = {&MarioFrameY, &LuigiFrameY, &PeachFrameY, &ToadFrameY, &LinkFrameY};
-    int offY = (*char_offsetY[p.Character - 1])[(p.State * 100) + (p.Frame * p.Direction)];
+    int offY = PlayerFrameY[p.Character][(p.State * 100) + (p.Frame * p.Direction)];
 
     return offY;
 }
@@ -353,9 +349,6 @@ void DrawCycloneAccessory(int Z, const Player_t& p, int cX, int tY, XTColor c)
         c);
 }
 
-using plr_pic_arr = RangeArr<StdPicture, 1, numStates>;
-static constexpr std::array<plr_pic_arr*, 5> s_char_tex = {&GFXMario, &GFXLuigi, &GFXPeach, &GFXToad, &GFXLink};
-
 void DrawPlayerRaw(int X, int Y, int Character, int State, int Frame, int Direction)
 {
     Player_t p;
@@ -364,7 +357,7 @@ void DrawPlayerRaw(int X, int Y, int Character, int State, int Frame, int Direct
     p.Frame = Frame;
     p.Direction = Direction;
 
-    StdPicture& tx = (*s_char_tex[p.Character - 1])[p.State];
+    StdPicture& tx = GFXCharacterBMP[p.Character - 1][p.State];
 
     int offX = pfrOffX(tx, p);
     int offY = pfrOffY(tx, p);
@@ -495,9 +488,9 @@ void DrawPlayer(Player_t &p, const int Z, XTColor color)
 //                    }
                 }
             }
-            else if(p.Character >= 1 && p.Character <= 5) // draw player
+            else if(p.Character >= 1 && p.Character <= numCharacters) // draw player
             {
-                StdPicture& tx = (*s_char_tex[p.Character - 1])[p.State];
+                StdPicture& tx = GFXCharacterBMP[p.Character - 1][p.State];
                 int offX = pfrOffX(tx, p);
                 int offY = pfrOffY(tx, p);
 

@@ -25,6 +25,7 @@
 #include <vector>
 #include <string>
 
+#include "global_constants.h"
 #include "range_arr.hpp"
 #include "std_picture.h"
 #include "graphics/gfx_frame.h"
@@ -68,7 +69,7 @@ public:
     StdPicture BMVs;
     StdPicture BMWin;
     RangeArr<StdPicture, 1, 3> Boot;
-    RangeArr<StdPicture, 1, 5> CharacterName;
+    RangeArr<StdPicture, 1, numCharacters> CharacterName;
     StdPicture Chat;
     RangeArr<StdPicture, 0, 2> Container;
     RangeArr<StdPicture, 1, 3> ECursor;

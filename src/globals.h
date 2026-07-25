@@ -1481,8 +1481,8 @@ extern RangeArr<PlayerStart_t, 1, 2> PlayerStart;
 // NEW: force selected characters to be used (ignore the blockCharacter array)
 extern bool g_forceCharacter;
 
-//Public blockCharacter(0 To 20) As Boolean
-extern RangeArrI<bool, 0, 20, false> blockCharacter;
+//Public blockCharacter(0 To numCharacters) As Boolean
+extern RangeArrI<bool, 0, numCharacters, false> blockCharacter;
 
 struct SelectWorld_t; // moved to main_menu.h
 
@@ -1654,26 +1654,10 @@ DECLREF_T(Block);
 
 //Public Player(0 To maxPlayers) As Player
 extern RangeArr<Player_t, 0, maxPlayers> Player;
-//Public MarioFrameX(0 To maxPlayerFrames) As Integer 'Player frame offset X
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> MarioFrameX;
-//Public MarioFrameY(0 To maxPlayerFrames) As Integer 'Player frame offset Y
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> MarioFrameY;
-//Public LuigiFrameX(0 To maxPlayerFrames) As Integer 'Player frame offset X
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> LuigiFrameX;
-//Public LuigiFrameY(0 To maxPlayerFrames) As Integer 'Player frame offset Y
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> LuigiFrameY;
-//Public PeachFrameX(0 To maxPlayerFrames) As Integer 'Player frame offset X
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> PeachFrameX;
-//Public PeachFrameY(0 To maxPlayerFrames) As Integer 'Player frame offset Y
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> PeachFrameY;
-//Public ToadFrameX(0 To maxPlayerFrames) As Integer 'Player frame offset X
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> ToadFrameX;
-//Public ToadFrameY(0 To maxPlayerFrames) As Integer 'Player frame offset Y
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> ToadFrameY;
-//Public LinkFrameX(0 To maxPlayerFrames) As Integer 'Player frame offset X
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> LinkFrameX;
-//Public LinkFrameY(0 To maxPlayerFrames) As Integer 'Player frame offset Y
-extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> LinkFrameY;
+// Per-character player frame offset X (1-indexed, element 0 unused)
+extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> PlayerFrameX[numCharacters + 1];
+// Per-character player frame offset Y (1-indexed, element 0 unused)
+extern RangeArrI<int8_t, 0, maxPlayerFrames, 0> PlayerFrameY[numCharacters + 1];
 //Public BackgroundFence(0 To maxBackgroundType) As Boolean
 extern RangeArrI<bool, 0, maxBackgroundType, false> BackgroundFence;
 
@@ -2116,7 +2100,7 @@ struct SaveSlotInfo_t
     int32_t Score = 0;
     int ConfigDefaults = 0;
 
-    RangeArr<SavedChar_t, 1, 5> SavedChar;
+    RangeArr<SavedChar_t, 1, numCharacters> SavedChar;
 
     // Save progress percent, displayed at title. <0 value denotes uninitialized saves
     int Progress = -1;
@@ -2337,8 +2321,8 @@ extern RangeArrI<int, 1, 13, 0> Points;
 extern int MaxWorldStars;
 //Public Debugger As Boolean 'if the debugger window is open
 // extern bool Debugger;
-//Public SavedChar(0 To 10) As Player 'Saves the Player's Status
-extern RangeArr<SavedChar_t, 0, 10> SavedChar;
+//Public SavedChar(0 To numCharacters) As Player 'Saves the Player's Status
+extern RangeArr<SavedChar_t, 0, numCharacters> SavedChar;
 
 extern bool LoadingInProcess;
 //Public LoadCoins As Integer
@@ -2419,87 +2403,10 @@ extern RangeArr<StdPicture, 1, maxBackgroundType> GFXBackgroundBMP;
 // extern RangeArrI<vbint_t, 1, maxBackgroundType, 0> GFXBackgroundWidth;
 
 extern const char *GFXPlayerNames[numCharacters];
-extern RangeArr<StdPicture, 1, numStates> *GFXCharacterBMP[numCharacters];
-extern RangeArrI<vbint_t, 1, numStates, 0> *GFXCharacterWidth[numCharacters];
-extern RangeArrI<vbint_t, 1, numStates, 0> *GFXCharacterHeight[numCharacters];
+extern RangeArr<StdPicture, 1, numStates> GFXCharacterBMP[numCharacters];
 // extern RangeArrI<bool, 1, 10, false> *GFXCharacterCustom[numCharacters];
 
 //Public GFXMarioCustom(1 To 10) As Boolean
-// extern RangeArrI<bool, 1, 10, false> GFXMarioCustom;
-//Public GFXMario(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXMario;
-#define GFXMario GFXMarioBMP
-//Public GFXMarioMask(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXMarioMask;
-//Public GFXMarioBMP(1 To 10) As StdPicture
-extern RangeArr<StdPicture, 1, numStates> GFXMarioBMP;
-//Public GFXMarioMaskBMP(1 To 10) As StdPicture
-//extern RangeArr<StdPicture, 1, 10> GFXMarioMaskBMP;
-//Public GFXMarioHeight(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXMarioHeight;
-//Public GFXMarioWidth(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXMarioWidth;
-//Public GFXLuigiCustom(1 To 10) As Boolean
-// extern RangeArrI<bool, 1, 10, false> GFXLuigiCustom;
-//Public GFXLuigi(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXLuigi;
-#define GFXLuigi GFXLuigiBMP
-//Public GFXLuigiMask(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXLuigiMask;
-//Public GFXLuigiBMP(1 To 10) As StdPicture
-extern RangeArr<StdPicture, 1, numStates> GFXLuigiBMP;
-//Public GFXLuigiMaskBMP(1 To 10) As StdPicture
-//extern RangeArr<StdPicture, 1, 10> GFXLuigiMaskBMP;
-//Public GFXLuigiHeight(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXLuigiHeight;
-//Public GFXLuigiWidth(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXLuigiWidth;
-//Public GFXPeachCustom(1 To 10) As Boolean
-// extern RangeArrI<bool, 1, 10, false> GFXPeachCustom;
-//Public GFXPeach(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXPeach;
-#define GFXPeach GFXPeachBMP
-//Public GFXPeachMask(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXPeachMask;
-//Public GFXPeachBMP(1 To 10) As StdPicture
-extern RangeArr<StdPicture, 1, numStates> GFXPeachBMP;
-//Public GFXPeachMaskBMP(1 To 10) As StdPicture
-//extern RangeArr<StdPicture, 1, 10> GFXPeachMaskBMP;
-//Public GFXPeachHeight(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXPeachHeight;
-//Public GFXPeachWidth(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXPeachWidth;
-//Public GFXToadCustom(1 To 10) As Boolean
-// extern RangeArrI<bool, 1, 10, false> GFXToadCustom;
-//Public GFXToad(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXToad;
-#define GFXToad GFXToadBMP
-//Public GFXToadMask(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXToadMask;
-//Public GFXToadBMP(1 To 10) As StdPicture
-extern RangeArr<StdPicture, 1, numStates> GFXToadBMP;
-//Public GFXToadMaskBMP(1 To 10) As StdPicture
-//extern RangeArr<StdPicture, 1, 10> GFXToadMaskBMP;
-//Public GFXToadHeight(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXToadHeight;
-//Public GFXToadWidth(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXToadWidth;
-
-//Public GFXLinkCustom(1 To 10) As Boolean
-// extern RangeArrI<bool, 1, 10, false> GFXLinkCustom;
-//Public GFXLink(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXLink;
-#define GFXLink GFXLinkBMP
-//Public GFXLinkMask(1 To 10) As Long
-//extern RangeArrI<long, 1, 10, 0> GFXLinkMask;
-//Public GFXLinkBMP(1 To 10) As StdPicture
-extern RangeArr<StdPicture, 1, numStates> GFXLinkBMP;
-//Public GFXLinkMaskBMP(1 To 10) As StdPicture
-//extern RangeArr<StdPicture, 1, 10> GFXLinkMaskBMP;
-//Public GFXLinkHeight(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXLinkHeight;
-//Public GFXLinkWidth(1 To 10) As Integer
-// extern RangeArrI<vbint_t, 1, 10, 0> GFXLinkWidth;
 //Public GFXYoshiBCustom(1 To 10) As Boolean
 // extern RangeArrI<bool, 1, maxYoshiGfx, false> GFXYoshiBCustom;
 //Public GFXYoshiB(1 To 10) As Long

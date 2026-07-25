@@ -643,7 +643,7 @@ void ControlsLogic()
                     int target = Player[A].Character;
 
                     // do the full wrap-around to find an acceptable target
-                    for(int i = 0; i < 5; i++)
+                    for(int i = 0; i < numCharacters; i++)
                     {
                         // move the target in the direction requested by the player
                         if(Controls::g_RawControls[plr_i].Left)
@@ -651,13 +651,13 @@ void ControlsLogic()
                             target --;
 
                             if(target <= 0)
-                                target = 5;
+                                target = numCharacters;
                         }
                         else
                         {
                             target ++;
 
-                            if(target > 5)
+                            if(target > numCharacters)
                                 target = 1;
                         }
 

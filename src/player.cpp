@@ -1177,6 +1177,8 @@ void PlayerDeathEffect(int A)
         NewEffect(EFFID_CHAR5_DIE, Player[A].Location, Player[A].Direction, ShadowMode);
         Effect[numEffects].Location.SpeedX = 2 * -Player[A].Direction;
     }
+    else
+        NewEffect(EFFID_CHAR1_DIE, Player[A].Location, 1, ShadowMode);
 }
 
 void PlayerDead(int A)

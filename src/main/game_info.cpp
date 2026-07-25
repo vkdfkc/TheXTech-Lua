@@ -285,8 +285,8 @@ int GameInfo::introCharacterNext()
         g_gameInfo.introCharacterCurrent = 0;
     int ret = g_gameInfo.introCharacters[g_gameInfo.introCharacterCurrent++];
 
-    if(ret > 5) // anti-idiot protection
-        ret = 5;
+    if(ret > numCharacters) // anti-idiot protection
+        ret = numCharacters;
     else if(ret < 1)
         ret = 1;
 
@@ -301,8 +301,8 @@ int GameInfo::outroCharacterNext()
         g_gameInfo.outroCharacterCurrent = 0;
     int ret = g_gameInfo.outroCharacters[g_gameInfo.outroCharacterCurrent++];
 
-    if(ret > 5) // anti-idiot protection
-        ret = 5;
+    if(ret > numCharacters)
+        ret = numCharacters;
     else if(ret < 1)
         ret = 1;
 

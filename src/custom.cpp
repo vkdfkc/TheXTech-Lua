@@ -59,16 +59,20 @@ static struct PlayerBackup
     } c[numStates];
 } s_playerFramesBackup[numCharacters];
 
-typedef RangeArrI<int8_t, 0, maxPlayerFrames, 0> PlayerOffsetArray;
 
-static PlayerOffsetArray *s_playerFrameX[numCharacters + 1] = {
-    nullptr, &MarioFrameX, &LuigiFrameX, &PeachFrameX, &ToadFrameX, &LinkFrameX
+std::string s_playerFileName[numCharacters + 1] = {
+    "",
+    "mario", "luigi", "peach", "toad", "link",
+    "char6", "char7", "char8", "char9", "char10",
+    "char11", "char12", "char13", "char14", "char15",
+    "char16", "char17", "char18", "char19", "char20",
+    "char21", "char22", "char23", "char24", "char25",
+    "char26", "char27", "char28", "char29", "char30",
+    "char31", "char32", "char33", "char34", "char35",
+    "char36", "char37", "char38", "char39", "char40",
+    "char41", "char42", "char43", "char44", "char45",
+    "char46", "char47", "char48", "char49", "char50"
 };
-static PlayerOffsetArray *s_playerFrameY[numCharacters + 1] = {
-    nullptr, &MarioFrameY, &LuigiFrameY, &PeachFrameY, &ToadFrameY, &LinkFrameY
-};
-
-const char *s_playerFileName[] = {nullptr, "mario", "luigi", "peach", "toad", "link"};
 
 
 static struct NPCDefaults_t
@@ -97,7 +101,7 @@ void SavePlayerDefaults()
         for(int S = 1; S <= numStates; ++S)
         {
             // Global override of player setup
-            PlayerPathRes = PlayerDir.resolveFileCaseExistsAbs(fmt::sprintf_ne("%s-%d.ini", s_playerFileName[C], S));
+            PlayerPathRes = PlayerDir.resolveFileCaseExistsAbs(fmt::sprintf_ne("%s-%d.ini", s_playerFileName[C].c_str(), S));
             if(!PlayerPathRes.empty())
                 LoadCustomPlayer(C, S, PlayerPathRes);
         }
@@ -109,8 +113,8 @@ void SavePlayerDefaults()
         auto &pb = s_playerFramesBackup[p - 1];
         for(int j = 0; j <= maxPlayerFrames; ++j)
         {
-            pb.p[j].x = (*s_playerFrameX[p])[j];
-            pb.p[j].y = (*s_playerFrameY[p])[j];
+            pb.p[j].x = PlayerFrameX[p][j];
+            pb.p[j].y = PlayerFrameY[p][j];
         }
 
         for(int j = 1; j <= numStates; ++j)
@@ -133,8 +137,8 @@ void LoadPlayerDefaults()
         auto &pb = s_playerFramesBackup[p - 1];
         for(int j = 0; j <= maxPlayerFrames; ++j)
         {
-            (*s_playerFrameX[p])[j] = pb.p[j].x;
-            (*s_playerFrameY[p])[j] = pb.p[j].y;
+            PlayerFrameX[p][j] = pb.p[j].x;
+            PlayerFrameY[p][j] = pb.p[j].y;
         }
 
         for(int j = 1; j <= numStates; ++j)
@@ -221,7 +225,7 @@ void FindCustomPlayers(const char* preview_players_from)
     {
         for(int S = 1; S <= numStates; ++S)
         {
-            const auto pFile = fmt::sprintf_ne("%s-%d.ini", s_playerFileName[C], S);
+            const auto pFile = fmt::sprintf_ne("%s-%d.ini", s_playerFileName[C].c_str(), S);
             // Episode-wide custom player setup
             playerPath = g_dirEpisode.resolveFileCaseExistsAbs(pFile);
 
@@ -314,8 +318,8 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
                 hitBoxFile.read("offsetY", offsetY, UNDEFINED);
                 if(offsetX != UNDEFINED && offsetY != UNDEFINED)
                 {
-                    (*s_playerFrameX[character])[convIndexCoorToSpriteIndex(x, y) + state * 100] = -offsetX;
-                    (*s_playerFrameY[character])[convIndexCoorToSpriteIndex(x, y) + state * 100] = -offsetY;
+                    PlayerFrameX[character][convIndexCoorToSpriteIndex(x, y) + state * 100] = -offsetX;
+                    PlayerFrameY[character][convIndexCoorToSpriteIndex(x, y) + state * 100] = -offsetY;
                 }
             }
             hitBoxFile.endGroup();
@@ -450,6 +454,59 @@ void LoadCustomNPC(int A, std::string cFileName)
         traits.FrameStyle = int(npc.framestyle);
     if(npc.en_usedefaultcam)
         traits.UseDefaultCam = npc.usedefaultcam;
+
+    if(npc.en_nohammer)
+        traits.NoHammer = npc.nohammer;
+    if(npc.en_noshell)
+        traits.NoShell = npc.noshell;
+    if(npc.en_nolava)
+        traits.NoLava = npc.nolava;
+    if(npc.en_noleaf)
+        traits.NoLeaf = npc.noleaf;
+    if(npc.en_noblockhit)
+        traits.NoBlockHit = npc.noblockhit;
+    if(npc.en_spinjump)
+        traits.SpinJump = npc.spinjump;
+    if(npc.en_spinjumphurt)
+        traits.SpinJumpHurt = npc.spinjumphurt;
+    if(npc.en_waterjumphurt)
+        traits.WaterJumpHurt = npc.waterjumphurt;
+    if(npc.en_yoshihurt)
+        traits.YoshiHurt = npc.yoshihurt;
+    if(npc.en_instantkill)
+        traits.InstantKill = npc.instantkill;
+    if(npc.en_immortal)
+        traits.Immortal = npc.immortal;
+    if(npc.en_groundpoundbreak)
+        traits.GroundpoundBreak = npc.groundpoundbreak;
+    if(npc.en_megabreak)
+        traits.MegaBreak = npc.megabreak;
+    if(npc.en_turboweak)
+        traits.TurboWeak = npc.turboweak;
+    if(npc.en_nosectionwrap)
+        traits.NoSectionWrap = npc.nosectionwrap;
+    if(npc.en_npcblockside)
+        traits.NpcBlockSide = npc.npcblockside;
+    if(npc.en_float)
+        traits.Float = npc.float_npc;
+    if(npc.en_nopiercingdmg)
+        traits.NoPiercingDmg = npc.nopiercingdmg;
+    if(npc.en_pushable)
+        traits.Pushable = npc.pushable;
+    if(npc.en_stackable)
+        traits.Stackable = npc.stackable;
+    if(npc.en_canmeltblock)
+        traits.CanMeltBlock = npc.canmeltblock;
+    if(npc.en_wingsforever)
+        traits.WingsForever = npc.wingsforever;
+    if(npc.en_frozentime)
+        traits.FrozenTime = int16_t(npc.frozentime);
+    if(npc.en_yoshitransform)
+        traits.YoshiTransform = int16_t(npc.yoshitransform);
+    if(npc.en_frozentransform)
+        traits.FrozenTransform = int16_t(npc.frozentransform);
+    if(npc.en_jumptransform)
+        traits.JumpTransform = int16_t(npc.jumptransform);
 
     if(A == NPCID_CONVEYOR)
     {

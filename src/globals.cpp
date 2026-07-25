@@ -86,7 +86,7 @@ bool LevelEditor = false;
 bool WorldEditor = false;
 bool g_forceCharacter = false;
 RangeArr<PlayerStart_t, 1, 2> PlayerStart;
-RangeArrI<bool, 0, 20, false> blockCharacter;
+RangeArrI<bool, 0, numCharacters, false> blockCharacter;
 RangeArrI<vbint_t, 0, maxPlayers, 0> OwedMount;
 RangeArrI<vbint_t, 0, maxPlayers, 0> OwedMountType;
 bool AutoUseModern = false;
@@ -153,16 +153,8 @@ RangeArr<NPC_t, -128, maxNPCs> NPC;
 RangeArr<Block_t, 0, maxBlocks> Block;
 
 RangeArr<Player_t, 0, maxPlayers> Player;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> MarioFrameX;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> MarioFrameY;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> LuigiFrameX;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> LuigiFrameY;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> PeachFrameX;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> PeachFrameY;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> ToadFrameX;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> ToadFrameY;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> LinkFrameX;
-RangeArrI<int8_t, 0, maxPlayerFrames, 0> LinkFrameY;
+RangeArrI<int8_t, 0, maxPlayerFrames, 0> PlayerFrameX[numCharacters + 1];
+RangeArrI<int8_t, 0, maxPlayerFrames, 0> PlayerFrameY[numCharacters + 1];
 RangeArrI<bool, 0, maxBackgroundType, false> BackgroundFence;
 
 RangeArr<NPCTraits_t, 0, maxNPCType> NPCTraits;
@@ -396,7 +388,7 @@ int Score = 0;
 RangeArrI<int, 1, 13, 0> Points;
 int MaxWorldStars = 0;
 // bool Debugger = false;
-RangeArr<SavedChar_t, 0, 10> SavedChar;
+RangeArr<SavedChar_t, 0, numCharacters> SavedChar;
 
 bool LoadingInProcess = false;
 int LoadCoins = 0;
@@ -436,12 +428,18 @@ RangeArr<StdPicture, 1, maxBackgroundType> GFXBackgroundBMP;
 
 const char *GFXPlayerNames[numCharacters] =
 {
-    "mario", "luigi", "peach", "toad", "link"
+    "mario", "luigi", "peach", "toad", "link",
+    "char6", "char7", "char8", "char9", "char10",
+    "char11", "char12", "char13", "char14", "char15",
+    "char16", "char17", "char18", "char19", "char20",
+    "char21", "char22", "char23", "char24", "char25",
+    "char26", "char27", "char28", "char29", "char30",
+    "char31", "char32", "char33", "char34", "char35",
+    "char36", "char37", "char38", "char39", "char40",
+    "char41", "char42", "char43", "char44", "char45",
+    "char46", "char47", "char48", "char49", "char50"
 };
-RangeArr<StdPicture, 1, numStates> *GFXCharacterBMP[numCharacters] =
-{
-    &GFXMarioBMP, &GFXLuigiBMP, &GFXPeachBMP, &GFXToadBMP, &GFXLinkBMP
-};
+RangeArr<StdPicture, 1, numStates> GFXCharacterBMP[numCharacters];
 // RangeArrI<vbint_t, 1, 10, 0> *GFXCharacterWidth[numCharacters] =
 // {
 //     &GFXMarioWidth, &GFXLuigiWidth, &GFXPeachHeight, &GFXToadWidth, &GFXLinkWidth
@@ -454,43 +452,6 @@ RangeArr<StdPicture, 1, numStates> *GFXCharacterBMP[numCharacters] =
 // {
 //     &GFXMarioCustom, &GFXLuigiCustom, &GFXPeachCustom, &GFXToadCustom, &GFXLinkCustom
 // };
-
-// RangeArrI<bool, 1, 10, false> GFXMarioCustom;
-//RangeArrI<long, 1, 10, 0> GFXMario;
-//RangeArrI<long, 1, 10, 0> GFXMarioMask;
-RangeArr<StdPicture, 1, numStates> GFXMarioBMP;
-//RangeArr<StdPicture, 1, 10> GFXMarioMaskBMP;
-// RangeArrI<vbint_t, 1, 10, 0> GFXMarioHeight;
-// RangeArrI<vbint_t, 1, 10, 0> GFXMarioWidth;
-// RangeArrI<bool, 1, 10, false> GFXLuigiCustom;
-//RangeArrI<long, 1, 10, 0> GFXLuigi;
-//RangeArrI<long, 1, 10, 0> GFXLuigiMask;
-RangeArr<StdPicture, 1, numStates> GFXLuigiBMP;
-//RangeArr<StdPicture, 1, 10> GFXLuigiMaskBMP;
-// RangeArrI<vbint_t, 1, 10, 0> GFXLuigiHeight;
-// RangeArrI<vbint_t, 1, 10, 0> GFXLuigiWidth;
-// RangeArrI<bool, 1, 10, false> GFXPeachCustom;
-//RangeArrI<long, 1, 10, 0> GFXPeach;
-//RangeArrI<long, 1, 10, 0> GFXPeachMask;
-RangeArr<StdPicture, 1, numStates> GFXPeachBMP;
-//RangeArr<StdPicture, 1, 10> GFXPeachMaskBMP;
-// RangeArrI<vbint_t, 1, 10, 0> GFXPeachHeight;
-// RangeArrI<vbint_t, 1, 10, 0> GFXPeachWidth;
-// RangeArrI<bool, 1, 10, false> GFXToadCustom;
-//RangeArrI<long, 1, 10, 0> GFXToad;
-//RangeArrI<long, 1, 10, 0> GFXToadMask;
-RangeArr<StdPicture, 1, numStates> GFXToadBMP;
-//RangeArr<StdPicture, 1, 10> GFXToadMaskBMP;
-// RangeArrI<vbint_t, 1, 10, 0> GFXToadHeight;
-// RangeArrI<vbint_t, 1, 10, 0> GFXToadWidth;
-
-// RangeArrI<bool, 1, 10, false> GFXLinkCustom;
-//RangeArrI<long, 1, 10, 0> GFXLink;
-//RangeArrI<long, 1, 10, 0> GFXLinkMask;
-RangeArr<StdPicture, 1, numStates> GFXLinkBMP;
-//RangeArr<StdPicture, 1, 10> GFXLinkMaskBMP;
-// RangeArrI<vbint_t, 1, 10, 0> GFXLinkHeight;
-// RangeArrI<vbint_t, 1, 10, 0> GFXLinkWidth;
 
 // RangeArrI<bool, 1, maxYoshiGfx, false> GFXYoshiBCustom;
 //RangeArrI<long, 1, 10, 0> GFXYoshiB;

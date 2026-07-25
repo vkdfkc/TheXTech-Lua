@@ -149,7 +149,7 @@ LunaRect PlayerF::GetScreenPosition(Player_t *player)
 void PlayerF::CycleRight(Player_t *player)
 {
     player->Character++;
-    if(player->Character > 5)
+    if(player->Character > numCharacters)
         player->Character = 1;
 
     UpdateYoshiMusic();
@@ -159,7 +159,7 @@ void PlayerF::CycleLeft(Player_t *player)
 {
     player->Character--;
     if(player->Character <= 0)
-        player->Character = 5;
+        player->Character = numCharacters;
 
     UpdateYoshiMusic();
 }

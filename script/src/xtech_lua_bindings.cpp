@@ -1095,6 +1095,9 @@ static void kill(int index)
 // Misc API wrappers
 // ============================================================================
 
+extern std::string s_playerFileName[numCharacters + 1];
+extern void LoadCustomPlayer(int character, int state, std::string cFileName);
+
 namespace LuaMisc
 {
 
@@ -1393,6 +1396,93 @@ static void lua_timer_cancel(const std::string &name)
 static void lua_timer_clearAll()
 {
     g_delayedCalls.clear();
+}
+
+// ============================================================================
+// Custom Character Registration APIs
+// ============================================================================
+
+// Set the resource directory name for a character slot
+static void player_setName(int character, const std::string &name)
+{
+    if(character < 1 || character > (int)numCharacters)
+        return;
+    s_playerFileName[character] = name;
+}
+
+// Reload textures and INI configs for a character
+static void player_reload(int character)
+{
+    if(character < 1 || character > (int)numCharacters)
+        return;
+    if(s_playerFileName[character].empty())
+        return;
+
+    int c = character - 1; // 0-based for GFXCharacterBMP
+    std::string gfxDir = AppPath + "graphics/";
+
+    // Load per-state textures — search order:
+    //   1. Level custom dir     (highest priority override)
+    //   2. Episode dir
+    //   3. Game graphics dir    (fallback)
+    DirListCI gfxSubDir;
+    gfxSubDir.setCurDir(gfxDir + s_playerFileName[character]);
+    for(int state = 1; state <= numStates; state++)
+    {
+        auto texName = fmt::sprintf_ne("%s-%d.png", s_playerFileName[character].c_str(), state);
+
+        std::string path = g_dirCustom.resolveFileCaseExistsAbs(texName);
+        if(path.empty())
+            path = g_dirEpisode.resolveFileCaseExistsAbs(texName);
+        if(path.empty())
+            path = gfxSubDir.resolveFileCaseExistsAbs(texName);
+
+        if(!path.empty())
+        {
+            GFXCharacterBMP[c][state].reset();
+            XRender::LoadPicture(GFXCharacterBMP[c][state], path);
+        }
+    }
+
+    // Load INI configs (episode first, then level override)
+    for(int state = 1; state <= numStates; state++)
+    {
+        auto iniName = fmt::sprintf_ne("%s-%d.ini", s_playerFileName[character].c_str(), state);
+        std::string iniPath = g_dirEpisode.resolveFileCaseExistsAbs(iniName);
+        if(!iniPath.empty())
+            LoadCustomPlayer(character, state, iniPath);
+
+        iniPath = g_dirCustom.resolveFileCaseExistsAbs(iniName);
+        if(!iniPath.empty())
+            LoadCustomPlayer(character, state, iniPath);
+    }
+}
+
+// Set physics parameters at runtime
+static void player_setPhysics(int character, int state,
+    const std::string &field, double value)
+{
+    if(character < 1 || character > (int)numCharacters)
+        return;
+    if(state < 1 || state > (int)numStates)
+        return;
+
+    int v = static_cast<int>(value);
+
+    if(field == "width")
+        Physics.PlayerWidth[character][state] = v;
+    else if(field == "height")
+        Physics.PlayerHeight[character][state] = v;
+    else if(field == "duckHeight")
+        Physics.PlayerDuckHeight[character][state] = v;
+    else if(field == "grabX")
+        Physics.PlayerGrabSpotX[character][state] = v;
+    else if(field == "grabY")
+        Physics.PlayerGrabSpotY[character][state] = v;
+    else if(field == "accX")
+        Physics.PlayerAccessoryOffsetX[character][state] = v;
+    else if(field == "accY")
+        Physics.PlayerAccessoryOffsetY[character][state] = v;
 }
 
 } // namespace LuaMisc
@@ -2258,6 +2348,12 @@ void xtech_lua_register_bindings(lua_State *L)
         // xtech_timer_create: registered manually (luabind::object param)
         def("xtech_timer_cancel", &LuaMisc::lua_timer_cancel),
         def("xtech_timer_clearAll", &LuaMisc::lua_timer_clearAll),
+
+        // Custom character registration
+        def("xtech_player_setName", &LuaMisc::player_setName),
+        def("xtech_player_reload", &LuaMisc::player_reload),
+        def("xtech_player_setPhysics", &LuaMisc::player_setPhysics),
+
         def("xtech_sysval_getLevelName", &LuaMisc::sysval_getLevelName),
         def("xtech_getStrWidth", (int(*)(const std::string&, double))&LuaMisc::misc_getStrWidth),
         def("xtech_getStrWidth", (int(*)(const std::string&))&LuaMisc::misc_getStrWidth),

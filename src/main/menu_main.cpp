@@ -1897,8 +1897,8 @@ bool mainMenuUpdate()
 
             if(MenuMode == MENU_SELECT_SLOT_1P_ADVMODE || MenuMode == MENU_SELECT_SLOT_2P_ADVMODE)
             {
-                if(MenuCursor > 5) MenuCursor = 0;
-                if(MenuCursor < 0) MenuCursor = 5;
+                if(MenuCursor > numCharacters) MenuCursor = 0;
+                if(MenuCursor < 0) MenuCursor = numCharacters;
             }
         }
 

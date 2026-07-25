@@ -1020,27 +1020,10 @@ void GraphicsLazyPreLoad()
             int c = p.Character;
             int s = p.State;
 
-            switch(c)
-            {
-            case 1:
-                XRender::lazyPreLoad(GFXMarioBMP[s]);
-                break;
-            case 2:
-                XRender::lazyPreLoad(GFXLuigiBMP[s]);
-                break;
-            case 3:
-                XRender::lazyPreLoad(GFXPeachBMP[s]);
-                break;
-            case 4:
-                XRender::lazyPreLoad(GFXToadBMP[s]);
-                break;
-            case 5:
-                XRender::lazyPreLoad(GFXLinkBMP[s]);
-                break;
-            default: // Trap
-                abort(); // "Please fix me up if you implemented a new playable character, see gfx_update.cpp!"
+            if(c >= 1 && c <= numCharacters)
+                XRender::lazyPreLoad(GFXCharacterBMP[c - 1][s]);
+            else
                 return;
-            }
         }
 
         // int64_t fBlock = 0;
@@ -2611,10 +2594,7 @@ void UpdateGraphicsScreen(Screen_t& screen)
             {
                 const Player_t& p = Player[A];
 
-                using plr_pic_arr = RangeArr<StdPicture, 1, numStates>;
-                constexpr std::array<plr_pic_arr*, 5> char_tex = {&GFXMario, &GFXLuigi, &GFXPeach, &GFXToad, &GFXLink};
-
-                StdPicture& tx = (*char_tex[p.Character - 1])[p.State];
+                StdPicture& tx = GFXCharacterBMP[p.Character - 1][p.State];
 
                 int Y = 0;
 
