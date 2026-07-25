@@ -1,6 +1,6 @@
 # LuaJIT 全量化游戏脚本接入 — 实施报告
 
-**日期：** 2026-07-24（修订）
+**日期：** 2026-07-25（修订 — 加入 game.lua 存档系统 + 沙箱架构 + 世界地图支持）
 **项目：** TheXTech
 **参考文档：** SMBx_Scripting_Help_1.4.5.rtf（TeaScript API）
 
@@ -18,25 +18,79 @@
 
 **文件：** [script/include/xtech_lua_main.h](script/include/xtech_lua_main.h)、[script/src/xtech_lua_main.cpp](script/src/xtech_lua_main.cpp)
 
+### 1.1 架构概述
+
+Lua VM 在游戏启动时创建一次，**不再随关卡进出销毁/重建**。通过关卡沙箱机制实现脚本隔离。
+
+```
+xtech_lua_init()        ← 游戏启动时，创建 VM + 注册绑定（仅一次）
+xtech_lua_loadGame()    ← 加载 game.lua（仅一次，首次调用时）
+xtech_lua_loadLevel()   ← 沙箱加载关卡脚本（每次进入关卡）
+xtech_lua_unloadLevel() ← 卸关卡沙箱 + 清理函数引用（退出关卡）
+xtech_lua_reset()       ← 同 unloadLevel（不再 lua_close）
+xtech_lua_quit()        ← 游戏退出时，最终销毁 VM
+```
+
+### 1.2 API 函数
+
 | 函数 | 说明 |
 |------|------|
-| `xtech_lua_init()` | 创建 LuaJIT VM（`luaL_newstate`），打开所有标准库，调用 `luabind::open`，注册游戏绑定，加载 `lunaglobal.lua` |
-| `xtech_lua_load()` | 从关卡目录加载 `level.lua`（或 `lunadll.lua`），检索所有钩子函数（`onLoad`, `onLoop` 等），立即调用 `onLoad()` |
-| `xtech_lua_loop()` | 处理异步延迟回调队列，然后调用 Lua `onLoop()` 函数 |
-| `xtech_lua_reset()` | 清除延迟回调队列和所有函数引用，销毁并重建 Lua VM |
-| `xtech_lua_renderStart()` | 调用 Lua `onRenderStart()` |
-| `xtech_lua_renderEnd()` | 调用 Lua `onRenderEnd()` |
-| `xtech_lua_render(screenZ)` | 调用 Lua `onRender(screenZ)` |
-| `xtech_lua_renderHud(screenZ, numScreens)` | 调用 Lua `onRenderHud(screenZ, numScreens)` |
-| `xtech_lua_quit()` | 调用 `onLoopEnd()`，关闭 Lua VM |
+| `xtech_lua_init()` | 创建 LuaJIT VM，打开标准库，注册所有游戏绑定 |
+| `xtech_lua_loadGame()` | 从 Episode 目录加载 `game.lua`（仅一次，自动在首次需要时调用） |
+| `xtech_lua_loadLevel()` | 从关卡目录沙箱加载 `level.lua`（或 `lunadll.lua`），检索钩子函数 |
+| `xtech_lua_unloadLevel()` | 清理关卡函数引用和沙箱（**不销毁 VM**） |
+| `xtech_lua_reset()` | 同 `unloadLevel`（兼容旧调用点） |
+| `xtech_lua_load()` | 兼容函数 = `loadGame` + `loadLevel` |
+| `xtech_lua_loop()` | 处理异步延迟回调，调用 `onLoop` |
+| `xtech_lua_worldMapRender()` | 调用 `OnWorldMapRender`（世界地图渲染钩子） |
+| `xtech_lua_gameSave(dataPath)` | 调用 `OnGameSave` → 序列化 table → 写入 `save{id}.luadata` |
+| `xtech_lua_gameLoad(jsonStr)` | 读取 JSON → 反序列化 → 调用 `OnGameLoad(table)` |
+| `xtech_lua_getFunc(name)` | 查找 Lua 函数：**沙箱优先**，回退到 `_G`（事件系统用） |
+| `xtech_lua_quit()` | 卸载所有状态，关闭 Lua VM |
 
-**脚本加载顺序：**
-1. 启动时：从资源目录加载 `lunaglobal.lua`（全局脚本）
-2. 进入关卡时：从关卡自定义目录加载 `level.lua` 或 `lunadll.lua`
-3. 加载后：自动检索脚本中定义的钩子函数
+### 1.3 脚本加载顺序
 
-**Lua 钩子函数：**
+1. **启动时**：`xtech_lua_init()` 创建 VM
+2. **首次需要时**：`xtech_lua_loadGame()` 从 Episode 目录加载 `game.lua`
+3. **进入关卡时**：`xtech_lua_loadLevel()` 从关卡自定义目录沙箱加载 `level.lua` / `lunadll.lua`
+4. **退出关卡时**：`xtech_lua_unloadLevel()` 清理关卡状态（保留 game.lua 的全局状态）
+
+### 1.4 关卡沙箱机制
+
+关卡脚本在**沙箱环境**中执行，实现脚本隔离：
+
+```
+Sandbox = {}
+Sandbox_mt = {
+    __index    = _G,              -- 读不到的去全局找（能读 CustomData、xtech_* API）
+    __newindex = sandbox_proxy    -- 写：CustomData → _G，其余 → Sandbox（不污染全局）
+}
+
+level.lua chunk 以 Sandbox 为环境执行
+```
+
+**作用**：
+- 关卡脚本可以访问所有全局 API 和 `game.lua` 定义的变量
+- 关卡脚本定义的全局变量不会污染 `_G`（限在沙箱内）
+- `CustomData` 是唯一可跨关卡写入的全局 table
+
+**事件系统兼容**：`xtech_lua_getFunc(name)` 先查沙箱，未找到再查 `_G`，确保 `onLevelComplete` 等事件钩子在沙箱环境中正常工作。
+
+### 1.5 全局脚本 game.lua
+
+**路径**：Episode 目录下（如 `worlds/vk's world2/game.lua`）
+
+**触发机制**：`xtech_lua_loadGame()` 在首次需要时自动加载（由 `loadLevel`、`gameSave`、`gameLoad`、`worldMapRender` 等入口点触发）。
+
+### 1.6 所有 Lua 钩子函数
+
 ```lua
+-- === game.lua（全局钩子） ===
+function OnGameSave()                    -- 存档时触发，返回要持久化的 table
+function OnGameLoad(data)                -- 读档时触发，参数为上次保存的 table
+function OnWorldMapRender()              -- 世界地图每帧渲染
+
+-- === level.lua（关卡钩子） ===
 function onLoad()                        -- 关卡加载时调用一次
 function onLoop()                        -- 每帧调用
 function onLoopEnd()                     -- 关卡结束时调用一次
@@ -44,10 +98,140 @@ function onRenderStart()                 -- 每帧渲染前
 function onRenderEnd()                   -- 每帧渲染后
 function onRender(Z)                     -- 每层渲染（Z=屏幕层号）
 function onRenderHud(Z, numScreens)      -- HUD 渲染
+function onLevelComplete()               -- 关卡通关时触发
+
+-- === 事件钩子（关卡脚本中定义，见第 8 章） ===
+function onNPCDeath(permid, npcId, killer)
+function onNPCHurt(permid, npcId, hitter, hitType)
+-- ... 等 17 个系统事件
 end
 ```
 
 **错误处理：** 所有 Lua 函数调用都通过 try-catch 间接调用，异常被捕获并记录到日志，不会导致游戏崩溃。
+
+---
+
+## 1.7 CustomData 持久化系统
+
+### 概述
+
+`CustomData` 是一个全局 Lua table，由 `game.lua` 管理，用于跨关卡自定义数据持久化。
+
+- **关卡脚本**：直接读写 `CustomData[FileName]`，无需关心存档机制
+- **存档时**：C++ 调用 `OnGameSave()` → Lua 返回整个 `CustomData` table → 序列化为 JSON → 写入 `save{id}.luadata`
+- **读档时**：从 `save{id}.luadata` 读取 JSON → 反序列化为 table → 调用 `OnGameLoad(table)`
+- **新游戏时**：`OnGameLoad({})` 传入空 table
+
+### game.lua 模板
+
+```lua
+-- game.lua（放在 Episode 目录下，如 worlds/vk's world2/game.lua）
+
+CustomData = {}
+
+-- 读档 / 新游戏时触发
+function OnGameLoad(data)
+    CustomData = data
+
+    -- 预加载世界地图需要的图像 (filename, code, transColor)
+    xtech_sprite_loadImage("graphics/star_full.png", 100, 0)
+    xtech_sprite_loadImage("graphics/star_empty.png", 101, 0)
+end
+
+-- 存档时触发：返回需要持久化的 table
+function OnGameSave()
+    return CustomData
+end
+```
+
+### 关卡脚本中使用 CustomData
+
+```lua
+-- level.lua
+
+function onLoad()
+    -- 读取本关的持久化数据
+    local myData = CustomData[FileName] or {}
+    if myData.starCollected then
+        -- 大金币已收集，隐藏对应的 NPC
+        xtech_npc_forEach(CONST_NPC_STAR_COLLECT, 0, function(npc)
+            npc.Killed = 9
+        end)
+    end
+end
+
+function onLevelComplete()
+    -- 保存本关的完成状态
+    CustomData[FileName] = {
+        starCollected = true,
+        score = xtech_sysval_getScore(),
+        completedAt = xtech_sysval_getGameTime()
+    }
+end
+```
+
+### 序列化支持的类型
+
+number、string、boolean、嵌套 table、nil（序列化为 `null`）。存储格式为独立 JSON 文件 `save{id}.luadata`，与 `save{id}.savx` 同级。
+
+---
+
+## 1.8 世界地图 Lua 支持
+
+### 钩子
+
+`OnWorldMapRender()` — 世界地图每帧渲染时调用，定义在 `game.lua` 中。
+
+### API
+
+```lua
+-- 获取当前玩家所在的关卡文件名（WorldPlayer[1].LevelIndex 对应的 WorldLevel[].FileName）
+name = xtech_worldmap_getCurrentLevel()      -- string 或 "" (nil if not on a level)
+
+-- 获取关卡在地图上的坐标（世界坐标，即 .lvl 文件中定义的位置）
+pos = xtech_worldmap_getLevelScreenPos(name)  -- table {x=?, y=?} 或 nil
+```
+
+### worldmap_getLevelScreenPos 说明
+
+返回值是一个 table，包含 `x` 和 `y` 两个字段（世界地图上的像素坐标）。注意这是世界坐标而非屏幕坐标——需要配合相机 API 转换为屏幕坐标用于绘制 HUD。
+
+### 大地图 HUD 渲染示例
+
+```lua
+-- game.lua
+
+local imgsLoaded = false
+
+function OnGameLoad(data)
+    CustomData = data
+    if not imgsLoaded then
+        xtech_sprite_loadImage("graphics/star_full.png", 100, 0)
+        xtech_sprite_loadImage("graphics/star_empty.png", 101, 0)
+        imgsLoaded = true
+    end
+end
+
+function OnWorldMapRender()
+    local levelName = xtech_worldmap_getCurrentLevel()
+    if not levelName or levelName == "" then return end
+
+    local pos = xtech_worldmap_getLevelScreenPos(levelName)
+    if not pos then return end
+
+    local data = CustomData[levelName]
+    -- xtech_hud_showImage(imgCode, x, y, sx, sy, sw, sh)
+    if data and data.starCollected then
+        xtech_hud_showImage(100, pos.x, pos.y, 0, 0, 32, 32)
+    else
+        xtech_hud_showImage(101, pos.x, pos.y, 0, 0, 32, 32)
+    end
+end
+
+function OnGameSave()
+    return CustomData
+end
+```
 
 ---
 
@@ -1244,8 +1428,12 @@ end
 | `src/main/game_loop.cpp` | 编辑 | `xtech_lua_loop()` 钩子 |
 | `src/main/menu_loop.cpp` | 编辑 | `xtech_lua_loop()` 钩子 |
 | `src/main/outro_loop.cpp` | 编辑 | `xtech_lua_loop()` 钩子 |
+| `src/main/game_save.cpp` | 编辑 | `SaveGame`/`LoadGame` 中 `OnGameSave`/`OnGameLoad` 钩子 |
+| `src/main/world_loop.cpp` | 编辑 | `OnWorldMapRender` 钩子 |
+| `script/src/xtech_lua_data.cpp` | **新增** | table↔JSON 递归序列化/反序列化 |
+| `script/include/xtech_lua_data.h` | **新增** | 序列化 API 声明 |
 
-**总计：** ~2800 行新代码/修改，分布在 15+ 个文件中。新增 140+ 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量、9 个 LEVELMACRO 常量、15 个 BEATCODE 常量。
+**总计：** ~3100 行新代码/修改，分布在 17+ 个文件中。新增 140+ 个 API 函数、306 个 NPC ID 常量、106 个 SFX 常量、152 个 EFFID 常量、9 个 LEVELMACRO 常量、15 个 BEATCODE 常量。实现了完整的 Lua VM 常驻生命周期、关卡沙箱隔离、自定义数据持久化、世界地图 Lua 支持。
 
 ---
 
