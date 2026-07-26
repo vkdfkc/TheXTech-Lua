@@ -615,38 +615,70 @@ static Block_t* block_getByName(const std::string &name) {
 namespace LuaAudio
 {
 
+// Helper: resolve audio file path (custom dir first, then episode dir)
+static std::string resolveAudioPath(const std::string &filename)
+{
+    if(filename.empty()) return {};
+    std::string path = g_dirCustom.resolveFileCaseExistsAbs(filename);
+    if(!path.empty()) return path;
+    return g_dirEpisode.resolveFileCaseExistsAbs(filename);
+}
+
+// ============================================================================
+// SFX — built-in sounds
+// ============================================================================
+
 static void playSFX(int index, int loops, int volume)
 {
     if(index > 0)
         PlaySound(index, loops, volume);
 }
 
+static void stopSFX(int index)
+{
+    if(index > 0)
+        StopSfx(index);
+}
+
+static void playSFXSpatial(int index, int x, int y, int loops, int volume)
+{
+    if(index > 0)
+        PlaySoundSpatial(index, x, y, x, y, loops, volume);
+}
+
+// ============================================================================
+// SFX — external custom files
+// ============================================================================
+
 static void playSFXExt(const std::string &filename, int loops, int volume)
 {
-    if(!filename.empty())
-    {
-        std::string full_path = g_dirCustom.resolveFileCaseAbs(filename);
+    std::string full_path = resolveAudioPath(filename);
+    if(!full_path.empty())
         PlayExtSound(full_path, loops, volume);
-    }
 }
 
 static void stopSFXExt(const std::string &filename)
 {
-    if(!filename.empty())
-    {
-        std::string full_path = g_dirCustom.resolveFileCaseAbs(filename);
+    std::string full_path = resolveAudioPath(filename);
+    if(!full_path.empty())
         StopExtSound(full_path);
-    }
 }
 
 static void preloadSFXExt(const std::string &filename)
 {
-    if(!filename.empty())
-    {
-        std::string full_path = g_dirCustom.resolveFileCaseAbs(filename);
+    std::string full_path = resolveAudioPath(filename);
+    if(!full_path.empty())
         PreloadExtSound(full_path);
-    }
 }
+
+static void stopAllSFX()
+{
+    StopAllSounds();
+}
+
+// ============================================================================
+// Music — playback control
+// ============================================================================
 
 static void playMusic(int section, int fadeInMs)
 {
@@ -669,6 +701,94 @@ static void setMusic(int sec, int musicId, const std::string &filename)
             CustomMusic[sec] = filename;
     }
 }
+
+static void stopMusic()
+{
+    StopMusic();
+}
+
+static void pauseMusic()
+{
+    PauseMusic();
+}
+
+static void resumeMusic()
+{
+    ResumeMusic();
+}
+
+static void fadeOutMusic(int ms)
+{
+    FadeOutMusic(ms);
+}
+
+// ============================================================================
+// Master volume control
+// ============================================================================
+
+static int getSFXVolume()
+{
+    return (int)g_config.audio_sfx_volume;
+}
+
+static void setSFXVolume(int v)
+{
+    g_config.audio_sfx_volume = v;
+    UpdateMusicVolume();
+}
+
+static int getMusicVolume()
+{
+    return (int)g_config.audio_mus_volume;
+}
+
+static void setMusicVolume(int v)
+{
+    g_config.audio_mus_volume = v;
+    UpdateMusicVolume();
+}
+
+// ============================================================================
+// Audio FX — Echo (requires THEXTECH_ENABLE_AUDIO_FX)
+// ============================================================================
+
+#ifdef THEXTECH_ENABLE_AUDIO_FX
+static void setEcho(luabind::object opts)
+{
+    SoundFXEchoSetup echo;
+    if(opts.is_valid() && luabind::type(opts) == LUA_TTABLE)
+    {
+        if(luabind::type(opts["on"]) != LUA_TNIL)         echo.echoOn       = luabind::object_cast<int>(opts["on"]);
+        if(luabind::type(opts["delay"]) != LUA_TNIL)      echo.echoDelay    = luabind::object_cast<int>(opts["delay"]);
+        if(luabind::type(opts["feedback"]) != LUA_TNIL)   echo.echoFeedBack = luabind::object_cast<int>(opts["feedback"]);
+        if(luabind::type(opts["mainVolL"]) != LUA_TNIL)   echo.echoMainVolL = luabind::object_cast<int>(opts["mainVolL"]);
+        if(luabind::type(opts["mainVolR"]) != LUA_TNIL)   echo.echoMainVolR = luabind::object_cast<int>(opts["mainVolR"]);
+        if(luabind::type(opts["echoVolL"]) != LUA_TNIL)   echo.echoVolL     = luabind::object_cast<int>(opts["echoVolL"]);
+        if(luabind::type(opts["echoVolR"]) != LUA_TNIL)   echo.echoVolR     = luabind::object_cast<int>(opts["echoVolR"]);
+    }
+    SoundFX_SetEcho(echo);
+}
+
+static void setReverb(luabind::object opts)
+{
+    SoundFXReverb rv;
+    if(opts.is_valid() && luabind::type(opts) == LUA_TTABLE)
+    {
+        if(luabind::type(opts["mode"]) != LUA_TNIL)       rv.mode      = luabind::object_cast<float>(opts["mode"]);
+        if(luabind::type(opts["roomSize"]) != LUA_TNIL)   rv.roomSize  = luabind::object_cast<float>(opts["roomSize"]);
+        if(luabind::type(opts["damping"]) != LUA_TNIL)    rv.damping   = luabind::object_cast<float>(opts["damping"]);
+        if(luabind::type(opts["wetLevel"]) != LUA_TNIL)   rv.wetLevel  = luabind::object_cast<float>(opts["wetLevel"]);
+        if(luabind::type(opts["dryLevel"]) != LUA_TNIL)   rv.dryLevel  = luabind::object_cast<float>(opts["dryLevel"]);
+        if(luabind::type(opts["width"]) != LUA_TNIL)      rv.width     = luabind::object_cast<float>(opts["width"]);
+    }
+    SoundFX_SetReverb(rv);
+}
+
+static void clearFX()
+{
+    SoundFX_Clear();
+}
+#endif // THEXTECH_ENABLE_AUDIO_FX
 
 } // namespace LuaAudio
 
@@ -2542,13 +2662,34 @@ void xtech_lua_register_bindings(lua_State *L)
         // ================================================================
         // Audio API functions
         // ================================================================
+        // Audio — SFX
         def("xtech_audio_playSFX", &LuaAudio::playSFX),
+        def("xtech_audio_stopSFX", &LuaAudio::stopSFX),
+        def("xtech_audio_playSFXSpatial", &LuaAudio::playSFXSpatial),
+        // Audio — SFX external
         def("xtech_audio_playSFXExt", &LuaAudio::playSFXExt),
         def("xtech_audio_stopSFXExt", &LuaAudio::stopSFXExt),
         def("xtech_audio_preloadSFXExt", &LuaAudio::preloadSFXExt),
+        def("xtech_audio_stopAllSFX", &LuaAudio::stopAllSFX),
+        // Audio — Music
         def("xtech_audio_playMusic", &LuaAudio::playMusic),
         def("xtech_audio_playMusicFile", &LuaAudio::playMusicFile),
         def("xtech_audio_setMusic", &LuaAudio::setMusic),
+        def("xtech_audio_stopMusic", &LuaAudio::stopMusic),
+        def("xtech_audio_pauseMusic", &LuaAudio::pauseMusic),
+        def("xtech_audio_resumeMusic", &LuaAudio::resumeMusic),
+        def("xtech_audio_fadeOutMusic", &LuaAudio::fadeOutMusic),
+        // Audio — Master volume
+        def("xtech_audio_getSFXVolume", &LuaAudio::getSFXVolume),
+        def("xtech_audio_setSFXVolume", &LuaAudio::setSFXVolume),
+        def("xtech_audio_getMusicVolume", &LuaAudio::getMusicVolume),
+        def("xtech_audio_setMusicVolume", &LuaAudio::setMusicVolume),
+#ifdef THEXTECH_ENABLE_AUDIO_FX
+        // Audio — FX (echo, reverb)
+        def("xtech_audio_setEcho", &LuaAudio::setEcho),
+        def("xtech_audio_setReverb", &LuaAudio::setReverb),
+        def("xtech_audio_clearFX", &LuaAudio::clearFX),
+#endif
 
         // ================================================================
         // HUD / Render API functions
