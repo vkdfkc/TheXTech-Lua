@@ -30,6 +30,8 @@
 
 #include "main/trees.h"
 
+#include "Logger/logger.h"
+
 bool p_PlayerTouchVine(Player_t& p, num_t vine_top, int VineNPC, int VineBGO)
 {
     if(p.Character == 5)
@@ -175,12 +177,39 @@ void PlayerVineMovement(int A)
     Player[A].RunCount = 0;
     Player[A].SpinJump = false;
 
-    if(Player[A].Controls.Left)
-        Player[A].Location.SpeedX = -1.5_n;
-    else if(Player[A].Controls.Right)
-        Player[A].Location.SpeedX = 1.5_n;
-    else
-        Player[A].Location.SpeedX = 0;
+
+    // check climb mode to adjsut if can move for left and right.
+    if(Physics.PlayerClimbMode[Player[A].Character][Player[A].State] == 0)
+    {
+        if(Player[A].Controls.Left)
+            Player[A].Location.SpeedX = -1.5_n;
+        else if(Player[A].Controls.Right)
+            Player[A].Location.SpeedX = 1.5_n;
+        else
+            Player[A].Location.SpeedX = 0;
+    }else{
+        if(Player[A].Controls.Left)
+        {
+            if (Player[A].Direction == 1)
+            {
+                Player[A].Location.SpeedX = -1.5_n;
+            } else {
+                Player[A].Direction = 1;
+                Player[A].Location.X = Player[A].Location.X - Player[A].Location.Width;
+            }
+        }else if(Player[A].Controls.Right){
+            if (Player[A].Direction == -1)
+            {
+                Player[A].Location.SpeedX = 1.5_n;
+            } else {
+                Player[A].Direction = -1;
+                Player[A].Location.X = Player[A].Location.X + Player[A].Location.Width;
+            }
+        }else
+        {
+            Player[A].Location.SpeedX = 0;
+        }
+    }
 
     if(Player[A].Controls.Up && Player[A].Vine > 2)
         Player[A].Location.SpeedY = -2;

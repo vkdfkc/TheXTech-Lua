@@ -266,6 +266,7 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
     bool isUsed = true;
     short offsetX = UNDEFINED;
     short offsetY = UNDEFINED;
+    short climb_mode = UNDEFINED;
 
     hitBoxFile.beginGroup("common");
     //normal
@@ -273,6 +274,7 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
     hitBoxFile.read("height", height, UNDEFINED);
     //duck
     hitBoxFile.read("height-duck", height_duck, UNDEFINED);
+    hitBoxFile.read("climb-mode", climb_mode, UNDEFINED);
 
     //grab offsets
     hitBoxFile.read("grab-offset-x", grab_offset_x, UNDEFINED);
@@ -348,6 +350,8 @@ void LoadCustomPlayer(int character, int state, std::string cFileName)
         Physics.PlayerAccessoryClimbOffsetX[character][state] = acc_climb_offset_x;
     if(acc_climb_offset_y != UNDEFINED)
         Physics.PlayerAccessoryClimbOffsetY[character][state] = acc_climb_offset_y;
+    if(climb_mode != UNDEFINED)
+        Physics.PlayerClimbMode[character][state] = climb_mode;
 }
 
 void FindCustomNPCs(/*std::string cFilePath*/)

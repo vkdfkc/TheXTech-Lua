@@ -2189,6 +2189,7 @@ struct Physics_t
 //    PlayerAccessoryClimbOffsetX/Y - additional cyclone accessory offset during climbing frames (25/26)
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryClimbOffsetX;
     RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerAccessoryClimbOffsetY;
+    RangeArr<RangeArrI<int, 1, numStates, 0>, 1, numCharacters> PlayerClimbMode;
 //    NPCTimeOffScreen As Integer
     int NPCTimeOffScreen = 0;
 //    NPCCanHurtWait As Integer
