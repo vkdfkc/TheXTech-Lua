@@ -830,14 +830,102 @@ xtech_section_setOffScreenExit(index, bool)       -- 设置是否允许屏幕外
 
 ### 4.9 音频
 
+#### 4.9.1 内置音效（SFX ID）
+
 ```lua
-xtech_audio_playSFX(index, loops, volume)         -- 播放内置音效
-xtech_audio_playSFXExt(filename, loops, vol)      -- 播放自定义音效（关卡目录）
-xtech_audio_stopSFXExt(filename)                  -- 停止自定义音效
-xtech_audio_preloadSFXExt(filename)               -- 预加载自定义音效
-xtech_audio_playMusic(section, fadeInMs)          -- 播放 section 音乐
-xtech_audio_playMusicFile(filename, fadeInMs)     -- 播放自定义音乐
-xtech_audio_setMusic(section, musicID, file)      -- 设置 section 音乐
+xtech_audio_playSFX(sfxId, loops, volume)             -- 播放内置音效（loops: 0=一次, -1=无限）
+xtech_audio_stopSFX(sfxId)                            -- 停止指定内置音效
+xtech_audio_playSFXSpatial(sfxId, x, y, loops, vol)   -- 空间音效（根据屏幕位置自动左右声道平衡）
+xtech_audio_stopAllSFX()                              -- 停止所有音效
+```
+
+#### 4.9.2 自定义音效（外部文件）
+
+```lua
+xtech_audio_playSFXExt(filename, loops, volume)       -- 播放关卡目录下的音频文件
+xtech_audio_stopSFXExt(filename)                      -- 停止指定文件的音效
+xtech_audio_preloadSFXExt(filename)                   -- 预加载（避免首次播放延迟）
+```
+
+支持的格式取决于 SDL_mixer 编译选项，通常包括 WAV、OGG、MP3、FLAC。
+
+#### 4.9.3 音乐 / BGM
+
+```lua
+xtech_audio_playMusic(section, fadeInMs)              -- 播放指定 section 配置的音乐
+xtech_audio_playMusicFile(filename, fadeInMs)         -- 播放任意音乐文件
+xtech_audio_setMusic(section, musicID, filename)      -- 动态修改 section 的 BGM（musicID 0-24，filename 可空）
+xtech_audio_stopMusic()                               -- 停止音乐
+xtech_audio_pauseMusic()                              -- 暂停音乐（保持位置）
+xtech_audio_resumeMusic()                             -- 恢复暂停的音乐
+xtech_audio_fadeOutMusic(ms)                          -- 淡出音乐（ms 毫秒）
+```
+
+#### 4.9.4 主音量
+
+```lua
+vol = xtech_audio_getSFXVolume()                      -- 获取音效主音量（0-100）
+xtech_audio_setSFXVolume(vol)                         -- 设置音效主音量
+vol = xtech_audio_getMusicVolume()                    -- 获取音乐主音量（0-100）
+xtech_audio_setMusicVolume(vol)                       -- 设置音乐主音量
+```
+
+#### 4.9.5 音频特效（需 `THEXTECH_ENABLE_AUDIO_FX` 编译宏）
+
+```lua
+-- Echo（回声 / 延迟效果）
+xtech_audio_setEcho{
+    on       = 1,       -- 开关（0=关, 非0=开）
+    delay    = 120,     -- 延迟时间（毫秒）
+    feedback = 80,      -- 反馈强度
+    mainVolL = 200,     -- 主音量左
+    mainVolR = 200,     -- 主音量右
+    echoVolL = 100,     -- 回声音量左
+    echoVolR = 100,     -- 回声音量右
+}
+
+-- Reverb（混响效果）
+xtech_audio_setReverb{
+    mode     = 0.0,     -- 0.0=Normal, >0.5=Freeze
+    roomSize = 0.7,     -- 房间大小（0.0-1.0）
+    damping  = 0.5,     -- 阻尼（0.0-1.0）
+    wetLevel = 0.2,     -- 湿信号电平
+    dryLevel = 0.4,     -- 干信号电平
+    width    = 1.0,     -- 宽度（0.0-1.0）
+}
+
+xtech_audio_clearFX()                                 -- 清除所有音频特效
+```
+
+**使用示例** — 关卡内动态音效 + 空间音频：
+
+```lua
+function onLoad()
+    xtech_audio_preloadSFXExt("custom_explosion.ogg")
+end
+
+function onNPCDeath(permid, npcId, killer)
+    local npc = xtech_npc_getByPermID(permid)
+    -- 在 NPC 位置播放空间音效
+    xtech_audio_playSFXSpatial(CONST_SFX_SMExplosion,
+        npc.Location.X, npc.Location.Y, 0, 128)
+end
+```
+
+**使用示例** — 关卡内动态切换 BGM + 混响：
+
+```lua
+function onLoad()
+    -- Boss 区域用自定义 BGM，带混响
+    xtech_audio_setMusic(1, 0, "boss_theme.ogg")
+    xtech_audio_setReverb{roomSize=0.8, damping=0.3, wetLevel=0.3, dryLevel=0.5}
+    xtech_audio_playMusicFile("boss_theme.ogg", 500)
+end
+
+function onLevelComplete()
+    xtech_audio_clearFX()   -- 清除混响
+    xtech_audio_fadeOutMusic(1000)
+end
 ```
 
 ### 4.10 精灵系统
