@@ -246,6 +246,11 @@ void xtech_lua_event_levelExit()
     s_safeCall("onLevelExit");
 }
 
+void xtech_lua_event_levelFail()
+{
+    s_safeCall("onLevelFail");
+}
+
 void xtech_lua_event_gameOver()
 {
     s_safeCall("onGameOver");

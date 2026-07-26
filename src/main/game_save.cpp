@@ -656,6 +656,7 @@ void DeleteSave(int world, int save)
                                           fmt::format_ne(f, save)));
 
     AddFile("save{0}.savx");
+    AddFile("save{0}.luadata");
     AddFile("timers{0}.ini");
     AddFile("deaths-{0}.rip");
     AddFile("fails-{0}.rip");

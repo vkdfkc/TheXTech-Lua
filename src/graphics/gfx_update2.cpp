@@ -502,7 +502,7 @@ void UpdateGraphics2(bool skipRepaint)
                 info_y -= 20;
             }
 
-            if(l.save_info.inited() && l.save_info.max_medals > 0 && true)
+            if(l.save_info.inited() && l.save_info.max_medals > 0 && g_showMedalsOnWorldMap)
             {
                 uint8_t ckpt = (Checkpoint == FileNamePathWorld + l.FileName) ? g_curLevelMedals.checkpoint : 0;
 

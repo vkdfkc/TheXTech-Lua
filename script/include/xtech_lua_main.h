@@ -6,6 +6,7 @@ extern bool xtech_lua_quit();
 
 // Game-level (global) Lua
 extern void xtech_lua_loadGame();     // Load game.lua once per session
+extern void xtech_lua_unloadGame();   // Reset game.lua loaded flag (for main menu re-entry)
 extern bool xtech_lua_gameSave(const std::string& dataPath);  // OnGameSave + serialize JSON
 extern bool xtech_lua_gameLoad(const std::string& jsonStr);   // OnGameLoad + deserialize JSON
 

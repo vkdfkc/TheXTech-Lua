@@ -652,7 +652,7 @@ void DrawNPC(num_t camX, num_t camY, int A)
     if(src_x >= GFXNPCBMP[NPC[A].Type].w)
         src_x = 0;
 
-    if(NPC[A].Type == NPCID_MEDAL && g_curLevelMedals.gotten(NPC[A].Variant - 1))
+    if(NPC[A].Type == NPCID_MEDAL && g_curLevelMedals.gotten(NPC[A].Variant - 1) && NPC[A].exty == 0)
         cn.a /= 2;
 
     if(NPC[A].Type == NPCID_PLANT_S3 || NPC[A].Type == NPCID_BIG_PLANT || NPC[A].Type == NPCID_PLANT_S1 || NPC[A].Type == NPCID_FIRE_PLANT || NPC[A].Type == NPCID_LONG_PLANT_UP || NPC[A].Type == NPCID_JUMP_PLANT || NPC[A].Type == NPCID_BOTTOM_PLANT || NPC[A].Type == NPCID_LONG_PLANT_DOWN || NPC[A].Type == NPCID_SIDE_PLANT)
@@ -778,7 +778,7 @@ void DrawNPC(num_t camX, num_t camY, int A)
             w,
             h,
             GFXNPC[NPC[A].Type],
-            src_x, NPC[A].Frame * h,
+            src_x, (NPC[A].Frame + NPC[A].exty * NPC[A]->TFrames) * h,
             cn);
     }
     else

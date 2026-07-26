@@ -364,6 +364,7 @@ int CreditChop = 0;
 int EndCredits = 0;
 int curStars = 0;
 // int maxStars = 0;
+bool g_showMedalsOnWorldMap = true;
 bool ShadowMode = false;
 bool MultiHop = false;
 bool SuperSpeed = false;

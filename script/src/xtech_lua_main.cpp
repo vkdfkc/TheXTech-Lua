@@ -308,6 +308,14 @@ void xtech_lua_loadGame()
         pLogInfo("Lua: No game.lua found in episode directory, will retry later");
 }
 
+void xtech_lua_unloadGame()
+{
+    // Reset so game.lua will be reloaded next time an episode is entered
+    // (needed because the Lua VM now persists across main menu visits)
+    g_gameLoaded = false;
+    s_wasOnMap = false;
+}
+
 
 // ============================================================================
 // Retrieve a function from sandbox by name (sandbox at given registry ref)

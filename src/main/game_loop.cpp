@@ -329,6 +329,11 @@ resume_IntroEvents:
             ConnectScreen::SaveChars();
         }
 
+#ifdef ENABLE_XTECH_LUA
+        if(LevelBeatCode <= BEATCODE_NONE)
+            xtech_lua_event_levelFail();
+#endif
+
         speedRun_triggerLeave();
         NextLevel();
 

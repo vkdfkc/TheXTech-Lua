@@ -1599,6 +1599,10 @@ resume_TriggerLast:
     if(NPC[A].AttLayer != LAYER_NONE && NPC[A].AttLayer != LAYER_DEFAULT)
         SetLayerSpeed(NPC[A].AttLayer, 0, 0, false, true);
 
+#ifdef ENABLE_XTECH_LUA
+    xtech_lua_event_npcDeath(A, (int)NPC[A].Type, B > 0 ? B : 0);
+#endif
+
     if((!GameMenu && !BattleMode) || NPC[A].DefaultType == 0)
     {
         for(B = 1; B <= numPlayers; B++) // Tell the player to stop standing on me because im dead kthnx
@@ -1661,8 +1665,5 @@ resume_TriggerLast:
         Deactivate(A);
     }
 
-#ifdef ENABLE_XTECH_LUA
-    xtech_lua_event_npcDeath(A, (int)NPC[A].Type, B > 0 ? B : 0);
-#endif
     return false;
 }

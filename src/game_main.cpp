@@ -1187,6 +1187,11 @@ int GameMain(const CmdLineSetup_t &setup)
                     ProcEvent(A, 0, EventContext::InitSetup);
             }
 
+            // Destroy Lua VM when returning to menu — fresh VM per episode
+            g_showMedalsOnWorldMap = true;
+            xtech_lua_quit();
+            xtech_lua_init();
+
             // Main menu loop
             runFrameLoop(&MenuLoop, nullptr, []()->bool{ return GameMenu;});
             if(!GameIsActive)

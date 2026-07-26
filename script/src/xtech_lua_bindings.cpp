@@ -56,6 +56,9 @@ extern "C"
 #include "npc_traits.h"
 #include "effect.h"
 #include "main/cheat_code.h"
+#include "main/level_medals.h"
+#include "main/level_save_info.h"
+#include "main/level_file.h"
 
 #include "script/luna/lunaplayer.h"
 #include "script/luna/lunanpc.h"
@@ -391,6 +394,8 @@ static void forEach(int id, int section, luabind::object callback)
 {
     if(!callback.is_valid()) return;
 
+    lua_State* L = xtech_lua_getState();
+
     for(int i = 1; i <= numNPCs; i++)
     {
         NPC_t *npc = const_cast<NPC_t*>(&NPC[i]);
@@ -398,18 +403,25 @@ static void forEach(int id, int section, luabind::object callback)
         if(id != 0 && npc->Type != (NPCID)id) continue;
         if(section != 0 && npc->Section != section) continue;
 
+        int top = lua_gettop(L);
+
         try
         {
             callback(npc);
         }
-        catch(const luabind::error &e)
+        catch(const luabind::error &)
         {
+            // Restore stack to pre-call level to prevent stack corruption
+            lua_settop(L, top);
+            const char* err = lua_tostring(L, -1);
             pLogWarning("Lua error in NPC forEach callback: %s",
-                lua_tostring(xtech_lua_getState(), -1));
-            lua_pop(xtech_lua_getState(), 1);
+                err ? err : "unknown");
+            if(lua_gettop(L) > top)
+                lua_settop(L, top);
         }
         catch(const std::exception &e)
         {
+            lua_settop(L, top);
             pLogWarning("Lua exception in NPC forEach callback: %s", e.what());
         }
     }
@@ -1174,6 +1186,21 @@ static void sysval_setLives(int v) { Lives = v; }
 static int sysval_getCoins() { return Coins; }
 static void sysval_setCoins(int v) { Coins = v; }
 
+// Medal data from CurLevelMedals_t
+static int medal_getCount() { return g_curLevelMedals.max; }
+static bool medal_isGotten(int variant, bool permanent = true)
+{
+    int idx = variant - 1;
+    if(idx < 0 || idx >= 8) return false;
+    if(permanent)
+        return ((g_curLevelMedals.prev | g_curLevelMedals.got) >> idx) & 1;
+    else
+        return ((g_curLevelMedals.got) >> idx) & 1;
+}
+// World map medal display toggle
+static bool misc_getShowMedalsOnWorldMap() { return g_showMedalsOnWorldMap; }
+static void misc_setShowMedalsOnWorldMap(bool v) { g_showMedalsOnWorldMap = v; }
+
 static int sysval_getScore() { return Score; }
 static void sysval_setScore(int v) { Score = v; }
 
@@ -1212,6 +1239,20 @@ static int sysval_getScreenTop(int screen)
         int h = (int)vScreen[screen].Height;
         return (h > 600) ? h / 2 - 300 : 0;
     }
+    return 0;
+}
+
+static int sysval_getScreenLeft(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+        return (int)vScreen[screen].ScreenLeft;
+    return 0;
+}
+
+static int sysval_getScreenTopDraw(int screen)
+{
+    if(screen >= 0 && screen <= 2)
+        return (int)vScreen[screen].ScreenTop;
     return 0;
 }
 
@@ -1633,6 +1674,32 @@ static void player_setPhysics(int character, int state,
 // World map API
 // ============================================================================
 
+// Helper: find WorldLevel by filename
+static int worldmap_findLevelIdx(const std::string &levelName)
+{
+    for(int i = 1; i <= numWorldLevels; i++)
+        if(WorldLevel[i].Active && WorldLevel[i].FileName == levelName)
+            return i;
+    return -1;
+}
+
+// Helper: lazy-init save_info for a world level (if never visited / stars not enabled)
+static void worldmap_ensureSaveInfo(int idx)
+{
+    if(idx < 1 || idx > numWorldLevels) return;
+    auto &l = WorldLevel[idx];
+    if(l.save_info.inited()) return;
+    if(l.FileName.empty()) return;
+
+    std::string lFile = l.FileName;
+    addMissingLvlSuffix(lFile);
+    std::string fullPath = g_dirEpisode.resolveFileCaseExistsAbs(lFile);
+    if(fullPath.empty()) return;
+
+    LevelData tempData;
+    l.save_info = InitLevelSaveInfo(fullPath, tempData);
+}
+
 // Returns the filename of the world level the player is standing on, or empty string
 static std::string worldmap_getCurrentLevel()
 {
@@ -1640,6 +1707,32 @@ static std::string worldmap_getCurrentLevel()
     if(idx > 0 && idx <= numWorldLevels && WorldLevel[idx].Active)
         return WorldLevel[idx].FileName;
     return std::string();
+}
+
+// World map: get medal count for a specific level by filename
+static int worldmap_getLevelMedalCount(const std::string &levelName)
+{
+    int idx = worldmap_findLevelIdx(levelName);
+    if(idx < 0) return 0;
+    worldmap_ensureSaveInfo(idx);
+    auto &info = WorldLevel[idx].save_info;
+    return info.inited() ? info.max_medals : 0;
+}
+
+// World map: check if a medal variant is collected for a specific level
+static bool worldmap_isLevelMedalGotten(const std::string &levelName, int variant, bool permanent)
+{
+    int idx = worldmap_findLevelIdx(levelName);
+    if(idx < 0) return false;
+    worldmap_ensureSaveInfo(idx);
+    auto &info = WorldLevel[idx].save_info;
+    if(!info.inited()) return false;
+    int vi = variant - 1;
+    if(vi < 0 || vi >= 8) return false;
+    if(permanent)
+        return (info.medals_got >> vi) & 1;
+    else
+        return (info.medals_best >> vi) & 1;
 }
 
 // Returns the screen X, Y of a world level by filename (second return value is Y via luabind)
@@ -2494,6 +2587,8 @@ void xtech_lua_register_bindings(lua_State *L)
         // World map
         def("xtech_worldmap_getCurrentLevel", &LuaMisc::worldmap_getCurrentLevel),
         def("xtech_worldmap_getLevelScreenPos", &LuaMisc::worldmap_getLevelScreenPos),
+        def("xtech_worldmap_getLevelMedalCount", &LuaMisc::worldmap_getLevelMedalCount),
+        def("xtech_worldmap_isLevelMedalGotten", &LuaMisc::worldmap_isLevelMedalGotten),
         // Config
         def("xtech_misc_getConfig", &LuaMisc::misc_getConfig),
         def("xtech_misc_setConfig", &LuaMisc::misc_setConfig),
@@ -2506,6 +2601,12 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_sysval_setLives", &LuaMisc::sysval_setLives),
         def("xtech_sysval_getCoins", &LuaMisc::sysval_getCoins),
         def("xtech_sysval_setCoins", &LuaMisc::sysval_setCoins),
+        // Medal save info
+        def("xtech_medal_getCount", &LuaMisc::medal_getCount),
+        def("xtech_medal_isGotten", &LuaMisc::medal_isGotten),
+        // World map medal display
+        def("xtech_misc_getShowMedalsOnWorldMap", &LuaMisc::misc_getShowMedalsOnWorldMap),
+        def("xtech_misc_setShowMedalsOnWorldMap", &LuaMisc::misc_setShowMedalsOnWorldMap),
         def("xtech_sysval_getScore", &LuaMisc::sysval_getScore),
         def("xtech_sysval_setScore", &LuaMisc::sysval_setScore),
         def("xtech_sysval_getScreenX", &LuaMisc::sysval_getScreenX),
@@ -2513,6 +2614,8 @@ void xtech_lua_register_bindings(lua_State *L)
         def("xtech_sysval_getScreenWidth", &LuaMisc::sysval_getScreenWidth),
         def("xtech_sysval_getScreenHeight", &LuaMisc::sysval_getScreenHeight),
         def("xtech_sysval_getScreenTop", &LuaMisc::sysval_getScreenTop),
+        def("xtech_sysval_getScreenLeft", &LuaMisc::sysval_getScreenLeft),
+        def("xtech_sysval_getScreenTopDraw", &LuaMisc::sysval_getScreenTopDraw),
         def("xtech_sysval_getScreenCenterX", &LuaMisc::sysval_getScreenCenterX),
         def("xtech_sysval_getShowHud", &LuaMisc::sysval_getShowHud),
         def("xtech_sysval_setShowHud", &LuaMisc::sysval_setShowHud),

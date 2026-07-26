@@ -221,6 +221,10 @@ name = xtech_worldmap_getCurrentLevel()      -- string 或 "" (nil if not on a l
 
 -- 获取关卡在地图上的坐标（世界坐标，即 .lvl 文件中定义的位置）
 pos = xtech_worldmap_getLevelScreenPos(name)  -- table {x=?, y=?} 或 nil
+
+-- 大地图查询关卡的 Medal 收集数据（从存档读取，无需进入关卡）
+count = xtech_worldmap_getLevelMedalCount(name)              -- 该关卡 Medal 总数
+gotten = xtech_worldmap_isLevelMedalGotten(name, var, perm)  -- var 号是否已收集
 ```
 
 ### worldmap_getLevelScreenPos 说明
@@ -243,6 +247,7 @@ function OnGameLoad(data)
     end
 end
 
+-- 方式 1：使用内置 Medal 存档数据（推荐，无需 CustomData 维护）
 function OnWorldMapRender()
     local levelName = xtech_worldmap_getCurrentLevel()
     if not levelName or levelName == "" then return end
@@ -250,18 +255,33 @@ function OnWorldMapRender()
     local pos = xtech_worldmap_getLevelScreenPos(levelName)
     if not pos then return end
 
-    local data = CustomData[levelName]
-    -- xtech_hud_showImage(imgCode, x, y, sx, sy, sw, sh)
-    if data and data.starCollected then
-        xtech_hud_showImage(100, pos.x, pos.y, 0, 0, 32, 32)
-    else
-        xtech_hud_showImage(101, pos.x, pos.y, 0, 0, 32, 32)
+    local count = xtech_worldmap_getLevelMedalCount(levelName)
+    for v = 1, count do
+        local gotten = xtech_worldmap_isLevelMedalGotten(levelName, v, true)
+        -- xtech_hud_showImage(imgCode, x, y, sx, sy, sw, sh)
+        if gotten then
+            xtech_hud_showImage(100, pos.x + (v-1)*32, pos.y, 0, 0, 32, 32)  -- 已收集
+        else
+            xtech_hud_showImage(101, pos.x + (v-1)*32, pos.y, 0, 0, 32, 32)  -- 未收集
+        end
     end
 end
 
-function OnGameSave()
-    return CustomData
-end
+-- 方式 2：使用 CustomData（需要自己维护收集状态）
+-- function OnWorldMapRender()
+--     local levelName = xtech_worldmap_getCurrentLevel()
+--     ...
+--     local data = CustomData[levelName]
+--     if data and data.starCollected then
+--         xtech_hud_showImage(100, pos.x, pos.y, 0, 0, 32, 32)
+--     else
+--         xtech_hud_showImage(101, pos.x, pos.y, 0, 0, 32, 32)
+--     end
+-- end
+--
+-- function OnGameSave()
+--     return CustomData
+-- end
 ```
 
 ---
@@ -966,6 +986,10 @@ h = xtech_sysval_getScreenHeight(screen)          -- 屏幕高度（像素）
 top = xtech_sysval_getScreenTop(screen)           -- HUD 顶部偏移（>600 时居中到 600 区域）
 cx = xtech_sysval_getScreenCenterX(screen)        -- 屏幕水平中心点（Width / 2）
 
+-- 屏幕绘制位置（大地图 / 有边框时用于 HUD 锚点）
+left = xtech_sysval_getScreenLeft(screen)         -- vScreen 在物理屏幕上的 X 绘制位置
+drawTop = xtech_sysval_getScreenTopDraw(screen)   -- vScreen 在物理屏幕上的 Y 绘制位置（含边框偏移）
+
 -- 游戏状态
 show = xtech_sysval_getShowHud()                  -- 是否显示 HUD 平面
 xtech_sysval_setShowHud(false)                    -- 隐藏 HUD 平面（禁用 onRenderHud）
@@ -987,6 +1011,58 @@ ckptId = xtech_sysval_getCheckpointId(n)          -- 第 n 个检查点的 ID（
 -- 关卡退出路径
 beatCode = xtech_sysval_getLevelBeatCode()        -- 当前关卡退出路径（决定世界地图解锁）
 xtech_sysval_setLevelBeatCode(v)                  -- 设置关卡退出路径（配合 setEndLevel 使用）
+```
+
+### 4.16a Medal 收集数据查询
+
+读取 SAVX 存档中已持久化的 Medal（大金币/NPC-274）收集状态，
+无需通过 CustomData 手动维护。
+
+```lua
+count = xtech_medal_getCount()                    -- 当前关卡 Medal 总数（最大 8）
+gotten = xtech_medal_isGotten(variant)            -- 永久收集？默认 true（1-based，对应 NPC.Variant）
+gotten = xtech_medal_isGotten(variant, true)      -- 同上：跨会话永久收集状态（prev | got）
+gotten = xtech_medal_isGotten(variant, false)     -- 仅本局收集状态（got，死亡后重置）
+```
+
+| 参数 `permanent` | 含义 | 数据来源 | 适用场景 |
+|:-:|------|------|------|
+| `true`（默认） | 是否曾经收集过 | `medals_got`（存档永久） | 星币（一次性）、外观切换 |
+| `false` | 本局是否已收集 | 当前会话 `got` | 龙币（可重复收集） |
+
+**使用示例** — 在 onLoad 中根据收集状态切换 Medal 外观：
+
+```lua
+function onLoad()
+    xtech_npc_forEach(274, 0, function(npc)
+        if npc.Variant > 0 and xtech_medal_isGotten(npc.Variant) then
+            npc.exty = 1   -- 切换到精灵表第 1 行（已收集外观）
+        end
+    end)
+end
+```
+
+### 4.16b 世界地图 Medal 显示开关
+
+控制站在关卡上时是否显示 Medal 收集信息（Star 图标旁的 Medal 图标）。
+
+```lua
+show = xtech_misc_getShowMedalsOnWorldMap()       -- 是否显示 Medal 收集情况（默认 true）
+xtech_misc_setShowMedalsOnWorldMap(false)          -- 隐藏 Medal 显示
+```
+
+**使用示例** — 在 game.lua 的 `OnGameLoad` 中关闭默认显示，改用 `OnWorldMapRender` 自定义：
+
+```lua
+function OnGameLoad(data)
+    xtech_misc_setShowMedalsOnWorldMap(false)  -- 关闭内置 Medal 显示
+end
+
+function OnWorldMapRender()
+    -- 自定义绘制收集情况
+    local levelName = xtech_worldmap_getCurrentLevel()
+    -- ...
+end
 ```
 
 ### 4.17 特效操作

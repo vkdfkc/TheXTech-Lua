@@ -2265,6 +2265,8 @@ extern int CreditChop;
 extern int EndCredits;
 //Public curStars As Integer 'number of stars
 extern int curStars;
+//! NEW: whether to show medal collection info on world map level tiles
+extern bool g_showMedalsOnWorldMap;
 //Public maxStars As Integer 'max number of stars in the game
 // extern int maxStars;
 //'cheat codes --------------
