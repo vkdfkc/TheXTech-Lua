@@ -495,6 +495,13 @@ void DrawPlayer(Player_t &p, const int Z, XTColor color)
 
                 if(p.Mount == 0)
                 {
+                    if (((abs(p.Frame) == 30) || (abs(p.Frame) == 31)) &&
+                        (p.Character == 1 || p.Character == 2) && 
+                        (p.State == 1)
+                        //&& (LevelMacro == LEVELMACRO_FLAG_EXIT)
+                        ) {
+                        offY -= PlayerFrameY[p.Character][(p.State * 100) + (p.Frame * p.Direction)]; 
+                    }
                     RenderTexturePlayer(Z, p,
                                 sX + offX,
                                 sY + offY,
